@@ -1,4 +1,4 @@
-package com.personal.omnivault_backend;
+package com.personal.omnivault;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

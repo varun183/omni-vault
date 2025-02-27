@@ -1,1 +1,99 @@
-spring.application.name=omnivault-backend
+spring:
+  application:
+    name: omnivault-backend
+
+  # Profile configuration
+  profiles:
+    active: dev
+
+  # Database configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5433/omnivault
+    username: postgres
+    password: varun003
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 30000
+      pool-name: OmnivaultHikariCP
+      connection-timeout: 20000
+
+  # JPA configuration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+
+  # Flyway migration configuration
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  # File upload configuration
+  servlet:
+    multipart:
+      enabled: true
+      file-size-threshold: 2KB
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+  # Cache configuration
+  cache:
+    type: caffeine
+    cache-names: contents, folders, tags, users
+    caffeine:
+      spec: maximumSize=500,expireAfterAccess=600s
+
+# Server configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain,text/css,application/javascript
+    min-response-size: 1024
+
+# Custom application properties
+app:
+  # JWT Configuration
+  jwt:
+    secret: "KS7bVTgyjY&(d2BKRQPq$Ln6!^nUMGLrE4V3*5%#cW@NF9AaH"  # Don't use this in production, set via env variable
+    accessTokenExpirationMs: 3600000  # 1 hour
+    refreshTokenExpirationMs: 2592000000  # 30 days
+
+  # Storage configuration
+  storage:
+    location: ./omnivault-storage
+    # Maximum file size per content type in MB
+    max-size:
+      image: 10
+      video: 100
+      document: 50
+      other: 25
+
+  # CORS configuration
+  cors:
+    allowed-origins: http://localhost:3000
+    allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+    max-age: 3600
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.personal.omnivault: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.hibernate: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"
