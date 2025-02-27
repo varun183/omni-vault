@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+
+# Ignore environment-specific config files
+omnivault-backend/src/main/resources/application-dev.yml
+omnivault-backend/src/main/resources/application-prod.yml
