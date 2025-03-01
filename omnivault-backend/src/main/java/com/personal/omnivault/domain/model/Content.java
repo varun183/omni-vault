@@ -1,5 +1,6 @@
 package com.personal.omnivault.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -11,10 +12,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.ZonedDateTime;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Entity
 @Table(name = "contents")
@@ -42,10 +40,12 @@ public class Content {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "folder_id")
+    @JsonIgnore
     private Folder folder;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
 
     @Column(name = "size_bytes")
@@ -70,15 +70,16 @@ public class Content {
     private Integer viewCount;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "metadata", columnDefinition = "jsonb")
+    @Column(columnDefinition = "jsonb")
     private Map<String, Object> metadata;
 
-    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
     @JoinTable(
             name = "content_tags",
             joinColumns = @JoinColumn(name = "content_id"),
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
+    @Builder.Default
     private Set<Tag> tags = new HashSet<>();
 
     @Column(name = "created_at")
@@ -86,6 +87,10 @@ public class Content {
 
     @Column(name = "updated_at")
     private ZonedDateTime updatedAt;
+
+    @Version
+    @Column(name = "version")
+    private Long version = 0L;
 
     @PrePersist
     protected void onCreate() {
@@ -100,12 +105,46 @@ public class Content {
     }
 
     public void addTag(Tag tag) {
+        if (this.tags == null) {
+            this.tags = new HashSet<>();
+        }
         this.tags.add(tag);
+
+        if (tag.getContents() == null) {
+            tag.setContents(new HashSet<>());
+        }
         tag.getContents().add(this);
     }
 
     public void removeTag(Tag tag) {
-        this.tags.remove(tag);
-        tag.getContents().remove(this);
+        if (this.tags != null) {
+            this.tags.remove(tag);
+        }
+
+        if (tag.getContents() != null) {
+            tag.getContents().remove(this);
+        }
+    }
+
+    // Custom equals and hashCode implementation that doesn't rely on collections
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Content content = (Content) o;
+        return Objects.equals(id, content.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    // Safe getter for tags collection
+    public Set<Tag> getTags() {
+        if (tags == null) {
+            tags = new HashSet<>();
+        }
+        return tags;
     }
 }

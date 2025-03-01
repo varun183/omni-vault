@@ -32,4 +32,8 @@ public class LinkContent {
 
     @Column(name = "preview_image_path")
     private String previewImagePath;
+
+    @Version
+    @Column(name = "version")
+    private Long version = 0L;
 }

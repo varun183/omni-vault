@@ -29,4 +29,8 @@ public class TextContent {
     @NotBlank
     @Column(name = "text_content", columnDefinition = "TEXT")
     private String textContent;
+
+    @Version
+    @Column(name = "version")
+    private Long version = 0L;
 }

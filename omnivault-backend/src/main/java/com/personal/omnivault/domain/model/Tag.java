@@ -1,5 +1,6 @@
 package com.personal.omnivault.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -11,6 +12,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.ZonedDateTime;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -39,9 +41,12 @@ public class Tag {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
 
-    @ManyToMany(mappedBy = "tags")
+    @ManyToMany(mappedBy = "tags", fetch = FetchType.LAZY)
+    @JsonIgnore
+    @Builder.Default
     private Set<Content> contents = new HashSet<>();
 
     @Column(name = "created_at")
@@ -50,8 +55,34 @@ public class Tag {
     @Column(name = "updated_at")
     private ZonedDateTime updatedAt;
 
+    @Version
+    @Column(name = "version")
+    private Long version = 0L;
+
     @PrePersist
     protected void onCreate() {
         createdAt = updatedAt = ZonedDateTime.now();
+    }
+
+    // Custom equals and hashCode implementation that doesn't rely on collections
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Tag tag = (Tag) o;
+        return Objects.equals(id, tag.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    // Safe getter for collections
+    public Set<Content> getContents() {
+        if (contents == null) {
+            contents = new HashSet<>();
+        }
+        return contents;
     }
 }

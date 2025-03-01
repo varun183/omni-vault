@@ -20,7 +20,7 @@ public class RefreshToken {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
-    private UUID id;
+    private UUID id = null;
 
     @Column(nullable = false, unique = true)
     private String token;
@@ -40,6 +40,10 @@ public class RefreshToken {
 
     @Column(name = "updated_at")
     private ZonedDateTime updatedAt;
+
+    @Version
+    @Column(name = "version")
+    private Long version = 0L;
 
     @PrePersist
     protected void onCreate() {
