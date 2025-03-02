@@ -20,6 +20,7 @@ import javax.imageio.ImageIO;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -72,27 +73,47 @@ public class FileStorageService implements StorageService {
 
         // Clean and create a safe filename
         String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
-        if (originalFilename.contains("..")) {
-            throw new FileStorageException("Filename contains invalid path sequence: " + originalFilename);
+        if (originalFilename.isEmpty()) {
+            originalFilename = "unnamed_file";
         }
 
         // Generate a unique storage path
         String storagePath = generateStoragePath(userId, contentType, originalFilename);
         Path targetPath = getPath(storagePath);
+        File tempFile = null;
 
         try {
             // Make sure the target directory exists
             Files.createDirectories(targetPath.getParent());
 
+            // First save to temp file to avoid partial writes
+            tempFile = File.createTempFile("upload_", "_temp");
+
             // Copy the file
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            try (InputStream inputStream = file.getInputStream();
+                 FileOutputStream outputStream = new FileOutputStream(tempFile)) {
+
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                }
+                outputStream.flush();
             }
+
+            // Then move to final location
+            Files.copy(tempFile.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
 
             log.info("Stored file {} at {}", originalFilename, targetPath);
             return storagePath;
         } catch (IOException e) {
+            log.error("Failed to store file: {}", originalFilename, e);
             throw new FileStorageException("Failed to store file " + originalFilename, e);
+        }finally {
+            // Clean up temp file
+            if (tempFile != null && tempFile.exists()) {
+                tempFile.delete();
+            }
         }
     }
 
