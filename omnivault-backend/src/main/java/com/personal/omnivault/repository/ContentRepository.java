@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -35,16 +36,20 @@ public interface ContentRepository extends JpaRepository<Content, UUID> {
             "LOWER(c.description) LIKE LOWER(CONCAT('%', ?2, '%')))")
     Page<Content> searchContents(User user, String searchTerm, Pageable pageable);
 
-    @Query(value = "SELECT c.* FROM contents c " +
-            "LEFT JOIN text_contents tc ON c.id = tc.content_id " +
-            "LEFT JOIN link_contents lc ON c.id = lc.content_id " +
-            "WHERE c.user_id = ?1 AND " +
-            "(LOWER(c.title) LIKE LOWER(CONCAT('%', ?2, '%')) OR " +
-            "LOWER(c.description) LIKE LOWER(CONCAT('%', ?2, '%')) OR " +
-            "tc.text_content ILIKE CONCAT('%', ?2, '%') OR " +
-            "lc.url ILIKE CONCAT('%', ?2, '%'))",
-            nativeQuery = true)
-    Page<Content> fullTextSearchContents(UUID userId, String searchTerm, Pageable pageable);
+    // Using a parameterized query to avoid issues with sorting in native queries
+    @Query("SELECT c FROM Content c " +
+            "LEFT JOIN TextContent tc ON c.id = tc.content.id " +
+            "LEFT JOIN LinkContent lc ON c.id = lc.content.id " +
+            "WHERE c.user.id = :userId AND " +
+            "(LOWER(c.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(c.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(COALESCE(tc.textContent, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(COALESCE(lc.url, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    Page<Content> fullTextSearchContents(
+            @Param("userId") UUID userId,
+            @Param("searchTerm") String searchTerm,
+            Pageable pageable
+    );
 
     @Query("SELECT c FROM Content c WHERE c.user = ?1 ORDER BY c.createdAt DESC")
     Page<Content> findRecentContents(User user, Pageable pageable);

@@ -20,8 +20,10 @@ public interface TagRepository extends JpaRepository<Tag, UUID> {
 
     Optional<Tag> findByNameAndUser(String name, User user);
 
+    @Query("SELECT t FROM Tag t WHERE t.name IN :names AND t.user = :user")
     Set<Tag> findByNameInAndUser(List<String> names, User user);
 
+    @Query("SELECT t FROM Tag t WHERE t.id IN :ids AND t.user = :user")
     Set<Tag> findByIdInAndUser(List<UUID> ids, User user);
 
     boolean existsByNameAndUser(String name, User user);
@@ -31,4 +33,7 @@ public interface TagRepository extends JpaRepository<Tag, UUID> {
 
     @Query("SELECT COUNT(c) FROM Content c JOIN c.tags t WHERE t.id = ?1")
     int countContentsByTagId(UUID tagId);
+
+    @Query("SELECT t FROM Tag t LEFT JOIN FETCH t.user WHERE t.id = :id")
+    Optional<Tag> findByIdWithUser(UUID id);
 }
