@@ -27,9 +27,13 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        use_sql_comments: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc:
           time_zone: UTC
+        # Temporarily disable constraint checks during startup
+        check_nullability: false
+
     open-in-view: false
 
   # Flyway migration configuration
@@ -67,7 +71,7 @@ server:
 app:
   # JWT Configuration
   jwt:
-    secret: "KS7bVTgyjY&(d2BKRQPq$Ln6!^nUMGLrE4V3*5%#cW@NF9AaH"  # Don't use this in production, set via env variable
+    secret:  "KS7bVTgyjY&(d2BKRQPq$Ln6!^nUMGLrE4V3*5%#cW@NF9AaH8zX$C2vB@mPqW3sDf5gH7jK8lM9nPzX1cV2bN3mQ4wE5rT6yU7iO8pP0aS1dF2gH3jK4lZ5xC6vB7nM8qW9eR0tY" # Don't use this in production, set via env variable
     accessTokenExpirationMs: 3600000  # 1 hour
     refreshTokenExpirationMs: 2592000000  # 30 days
 
