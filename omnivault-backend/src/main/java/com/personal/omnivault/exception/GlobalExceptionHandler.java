@@ -37,10 +37,7 @@ public class GlobalExceptionHandler {
         return createErrorResponse(ex.getMessage(), HttpStatus.UNAUTHORIZED, request);
     }
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex, WebRequest request) {
-        return createErrorResponse("You don't have permission to access this resource", HttpStatus.FORBIDDEN, request);
-    }
+
 
     @ExceptionHandler(FileStorageException.class)
     public ResponseEntity<ErrorResponse> handleFileStorageException(FileStorageException ex, WebRequest request) {
@@ -90,6 +87,43 @@ public class GlobalExceptionHandler {
         );
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
+            org.springframework.dao.DataIntegrityViolationException ex, WebRequest request) {
+
+        String message = "Operation violates data integrity constraints";
+
+        // Check for specific constraint violations
+        String errorMessage = ex.getMessage().toLowerCase();
+        if (errorMessage.contains("unique") || errorMessage.contains("duplicate")) {
+            message = "A record with the same unique identifier already exists";
+        } else if (errorMessage.contains("foreign key") || errorMessage.contains("references")) {
+            message = "This operation references a record that doesn't exist";
+        }
+
+        log.error("Data integrity violation: {}", message, ex);
+        return createErrorResponse(message, HttpStatus.CONFLICT, request);
+    }
+
+    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLockingFailureException(
+            org.springframework.orm.ObjectOptimisticLockingFailureException ex, WebRequest request) {
+
+        log.error("Optimistic locking failure: {}", ex.getMessage());
+        return createErrorResponse(
+                "The record was updated by another user. Please refresh and try again",
+                HttpStatus.CONFLICT,
+                request
+        );
+    }
+
+
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex, WebRequest request) {
+        return createErrorResponse("You don't have permission to access this resource", HttpStatus.FORBIDDEN, request);
     }
 
     @ExceptionHandler(Exception.class)
