@@ -5,6 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { getCurrentUser } from "./store/slices/authSlice";
 import LoginPage from "./pages/LoginPage";
 import Navbar from "./components/layout/Navbar";
+import RegisterPage from "./pages/RegisterPage";
 
 function App() {
   const dispatch = useDispatch();
@@ -20,6 +21,7 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         {/* {import.meta.env.DEV && <ReduxTester />} */}
       </Routes>
     </BrowserRouter>
