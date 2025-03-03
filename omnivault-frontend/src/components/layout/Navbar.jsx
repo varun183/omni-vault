@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { FiUser, FiLogOut, FiSearch } from "react-icons/fi";
 import { logout } from "../../store/slices/authSlice";
-import { searchContent } from "../../store/slices/contentSlice";
 
 const Navbar = () => {
   const navigate = useNavigate();
