@@ -67,6 +67,10 @@ const FileUploadForm = ({ isOpen, onClose }) => {
     dispatch(uploadFile(formData))
       .unwrap()
       .then(() => {
+        // Add tag refresh
+        if (newTags.length > 0) {
+          dispatch(getAllTags());
+        }
         onClose();
         setSelectedFile(null);
         setSelectedTags([]);

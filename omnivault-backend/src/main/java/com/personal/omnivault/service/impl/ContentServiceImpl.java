@@ -48,7 +48,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "contents", key = "'content_' + #contentId")
+    @Cacheable(value = "contents", key = "'content_' +@authService.getCurrentUser().getId() + '_' + #contentId")
     public ContentDTO getContent(UUID contentId) {
         Content content = getContentEntity(contentId);
 
@@ -75,7 +75,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "contents", key = "'allContents_page_' + #pageable.pageNumber + '_' + #pageable.pageSize")
+    @Cacheable(value = "contents", key = "'allContents_page_' + @authService.getCurrentUser().getId() + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
     public Page<ContentDTO> getAllContent(Pageable pageable) {
         User currentUser = authService.getCurrentUser();
         Page<Content> contentPage = contentRepository.findAllByUser(currentUser, pageable);
@@ -85,7 +85,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "contentsByFolder", key = "'folder_' + #folderId + '_page_' + #pageable.pageNumber + '_' + #pageable.pageSize")
+    @Cacheable(value = "contentsByFolder", key = "'folder_' +@authService.getCurrentUser().getId() + '_' + #folderId + '_page_' + #pageable.pageNumber + '_' + #pageable.pageSize")
     public Page<ContentDTO> getContentByFolder(UUID folderId, Pageable pageable) {
         User currentUser = authService.getCurrentUser();
         Folder folder = folderService.getFolderEntity(folderId);
@@ -99,7 +99,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "contentsByType", key = "'type_' + #contentType + '_page_' + #pageable.pageNumber + '_' + #pageable.pageSize")
+    @Cacheable(value = "contentsByType", key = "'type_' +@authService.getCurrentUser().getId() + '_' + #contentType + '_page_' + #pageable.pageNumber + '_' + #pageable.pageSize")
     public Page<ContentDTO> getContentByType(ContentType contentType, Pageable pageable) {
         User currentUser = authService.getCurrentUser();
         Page<Content> contentPage = contentRepository.findAllByUserAndContentType(currentUser, contentType, pageable);
@@ -109,7 +109,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "contentsByTag", key = "'tag_' + #tagId + '_page_' + #pageable.pageNumber + '_' + #pageable.pageSize")
+    @Cacheable(value = "contentsByTag", key = "'tag_' +@authService.getCurrentUser().getId() + '_' + #tagId + '_page_' + #pageable.pageNumber + '_' + #pageable.pageSize")
     public Page<ContentDTO> getContentByTag(UUID tagId, Pageable pageable) {
         User currentUser = authService.getCurrentUser();
         Tag tag = tagService.getTagEntity(tagId);
@@ -123,7 +123,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "contents", key = "'favorites_page_' + #pageable.pageNumber + '_' + #pageable.pageSize")
+    @Cacheable(value = "contents", key = "'favorites_page_' +@authService.getCurrentUser().getId() + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
     public Page<ContentDTO> getFavoriteContent(Pageable pageable) {
         User currentUser = authService.getCurrentUser();
         Page<Content> contentPage = contentRepository.findAllByUserAndFavoriteIsTrue(currentUser, pageable);
@@ -133,7 +133,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "recentContents", key = "'recent_page_' + #pageable.pageNumber + '_' + #pageable.pageSize")
+    @Cacheable(value = "recentContents", key = "'recent_page_' +@authService.getCurrentUser().getId() + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
     public Page<ContentDTO> getRecentContent(Pageable pageable) {
         User currentUser = authService.getCurrentUser();
         Page<Content> contentPage = contentRepository.findRecentContents(currentUser, pageable);
@@ -155,7 +155,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional
-    @CacheEvict(value = {"contents", "recentContents", "popularContents"}, allEntries = true)
+    @CacheEvict(value = {"contents", "recentContents", "popularContents","tags"}, allEntries = true)
     public ContentDTO createTextContent(TextContentCreateRequest request) {
         User currentUser = authService.getCurrentUser();
 
@@ -215,7 +215,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional
-    @CacheEvict(value = {"contents", "recentContents", "popularContents"}, allEntries = true)
+    @CacheEvict(value = {"contents", "recentContents", "popularContents","tags"}, allEntries = true)
     public ContentDTO createLinkContent(LinkContentCreateRequest request) {
         User currentUser = authService.getCurrentUser();
 
@@ -275,7 +275,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional
-    @CacheEvict(value = {"contents", "recentContents", "popularContents"}, allEntries = true)
+    @CacheEvict(value = {"contents", "recentContents", "popularContents","tags"}, allEntries = true)
     public ContentDTO createFileContent(
             MultipartFile file,
             String title,

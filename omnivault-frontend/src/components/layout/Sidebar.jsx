@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -16,27 +16,33 @@ import {
 import { getRootFolders } from "../../store/slices/folderSlice";
 import { getAllTags } from "../../store/slices/tagSlice";
 import Button from "../common/Button";
+import FolderModal from "../features/folder/FolderModal";
 
 const Sidebar = () => {
   const dispatch = useDispatch();
   const location = useLocation();
   const { rootFolders } = useSelector((state) => state.folders);
   const { tags } = useSelector((state) => state.tags);
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
 
   useEffect(() => {
     dispatch(getRootFolders());
     dispatch(getAllTags());
   }, [dispatch]);
 
-  const isActiveRoute = (path) => location.pathname === path;
+  const isActiveRoute = (path) => {
+    return location.pathname === path;
+  };
 
   return (
     <aside className="w-64 bg-gray-50 border-r h-screen overflow-y-auto sticky top-0">
       <div className="p-4 space-y-6">
         <div>
-          <h2 className="text-sm font-semibold uppercase text-gray-500 mb-2">
-            Content Types
-          </h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold uppercase text-gray-500">
+              Content Types
+            </h2>
+          </div>
           <nav className="space-y-1">
             <Link
               to="/"
@@ -108,9 +114,11 @@ const Sidebar = () => {
         </div>
 
         <div>
-          <h2 className="text-sm font-semibold uppercase text-gray-500 mb-2">
-            Collections
-          </h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold uppercase text-gray-500">
+              Collections
+            </h2>
+          </div>
           <nav className="space-y-1">
             <Link
               to="/favorites"
@@ -142,7 +150,12 @@ const Sidebar = () => {
             <h2 className="text-sm font-semibold uppercase text-gray-500">
               Folders
             </h2>
-            <Button variant="ghost" size="sm" className="p-1">
+            <Button
+              onClick={() => setIsFolderModalOpen(true)}
+              variant="ghost"
+              size="sm"
+              className="p-1"
+            >
               <FiPlus />
             </Button>
           </div>
@@ -195,6 +208,11 @@ const Sidebar = () => {
           </div>
         </div>
       </div>
+
+      <FolderModal
+        isOpen={isFolderModalOpen}
+        onClose={() => setIsFolderModalOpen(false)}
+      />
     </aside>
   );
 };

@@ -44,7 +44,7 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "tags", key = "'tag_' + #tagId")
+    @Cacheable(value = "tags", key = "'tag_' +@authService.getCurrentUser().getId() + '_' + #tagId")
     public TagDTO getTag(UUID tagId) {
         return convertToTagDto(getTagEntity(tagId));
     }
@@ -129,6 +129,7 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "tags", allEntries = true)
     public Set<Tag> findOrCreateTags(List<String> tagNames) {
         if (tagNames == null || tagNames.isEmpty()) {
             return Collections.emptySet();

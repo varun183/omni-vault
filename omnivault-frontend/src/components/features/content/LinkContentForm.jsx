@@ -14,11 +14,40 @@ import TextArea from "../../common/TextArea";
 import Button from "../../common/Button";
 import Spinner from "../../common/Spinner";
 
+// Custom URL validation to handle URLs without protocol
+Yup.addMethod(
+  Yup.string,
+  "flexUrl",
+  function (message = "Please enter a valid URL") {
+    return this.test("is-url", message, function (value) {
+      const { path, createError } = this;
+
+      // If empty, let the required validator handle it
+      if (!value) return true;
+
+      // Check if it already has a protocol
+      const hasProtocol = /^[a-z]+:\/\//i.test(value);
+
+      // Prepend protocol if missing, then validate
+      const urlToValidate = hasProtocol ? value : `https://${value}`;
+
+      // Use Yup's internal URL validation
+      try {
+        return Yup.string().url().isValidSync(urlToValidate);
+      } catch (error) {
+        return createError({ path, message });
+      }
+    });
+  }
+);
+
 const LinkContentSchema = Yup.object().shape({
   title: Yup.string()
     .required("Title is required")
     .max(255, "Title must be less than 255 characters"),
-  url: Yup.string().required("URL is required").url("Please enter a valid URL"),
+  url: Yup.string()
+    .required("URL is required")
+    .flexUrl("Please enter a valid URL"),
   description: Yup.string().max(
     500,
     "Description must be less than 500 characters"
@@ -58,36 +87,40 @@ const LinkContentForm = ({ isOpen, onClose, content = null }) => {
   };
 
   const handleSubmit = (values) => {
+    // Add protocol to URL if missing
+    const url = values.url;
+    const hasProtocol = /^[a-z]+:\/\//i.test(url);
+    const processedUrl = hasProtocol ? url : `https://${url}`;
+
     const contentData = {
       ...values,
+      url: processedUrl, // Use the processed URL with protocol
       tagIds: selectedTags,
       newTags,
     };
 
-    if (isEditing) {
-      dispatch(
-        updateContent({
-          contentId: content.id,
-          contentData,
-        })
-      )
-        .unwrap()
-        .then(() => {
-          onClose();
-        })
-        .catch((error) => {
-          console.error("Failed to update content:", error);
-        });
-    } else {
-      dispatch(createLinkContent(contentData))
-        .unwrap()
-        .then(() => {
-          onClose();
-        })
-        .catch((error) => {
-          console.error("Failed to create content:", error);
-        });
-    }
+    const submitPromise = isEditing
+      ? dispatch(
+          updateContent({
+            contentId: content.id,
+            contentData,
+          })
+        )
+      : dispatch(createLinkContent(contentData));
+
+    submitPromise
+      .unwrap()
+      .then(() => {
+        // Force refresh tags to ensure new tags are visible immediately
+        dispatch(getAllTags());
+        onClose();
+      })
+      .catch((error) => {
+        console.error(
+          isEditing ? "Failed to update content:" : "Failed to create content:",
+          error
+        );
+      });
   };
 
   const handleTagToggle = (tagId) => {
@@ -150,8 +183,14 @@ const LinkContentForm = ({ isOpen, onClose, content = null }) => {
               onChange={handleChange}
               onBlur={handleBlur}
               error={touched.url && errors.url}
+              placeholder="example.com or https://example.com"
               required
             />
+            {!errors.url && values.url && !/^[a-z]+:\/\//i.test(values.url) && (
+              <p className="text-xs text-gray-500 mt-1">
+                Protocol missing - https:// will be added automatically
+              </p>
+            )}
 
             <div className="mb-4">
               <label

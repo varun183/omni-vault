@@ -73,6 +73,10 @@ const TextContentForm = ({ isOpen, onClose, content = null }) => {
       )
         .unwrap()
         .then(() => {
+          // Add tag refresh
+          if (newTags.length > 0) {
+            dispatch(getAllTags());
+          }
           onClose();
         })
         .catch((error) => {
@@ -82,6 +86,10 @@ const TextContentForm = ({ isOpen, onClose, content = null }) => {
       dispatch(createTextContent(contentData))
         .unwrap()
         .then(() => {
+          // Add tag refresh
+          if (newTags.length > 0) {
+            dispatch(getAllTags());
+          }
           onClose();
         })
         .catch((error) => {

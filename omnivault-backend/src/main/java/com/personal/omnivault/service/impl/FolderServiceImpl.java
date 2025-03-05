@@ -43,7 +43,7 @@ public class FolderServiceImpl implements FolderService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "folders", key = "'subFolders_' + #folderId")
+    @Cacheable(value = "folders", key = "'subFolders_' +@authService.getCurrentUser().getId() + '_' + #folderId")
     public List<FolderDTO> getSubfolders(UUID folderId) {
         User currentUser = authService.getCurrentUser();
         Folder parentFolder = folderRepository.findByIdAndUser(folderId, currentUser)
@@ -57,7 +57,7 @@ public class FolderServiceImpl implements FolderService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "folders", key = "'folder_' + #folderId")
+    @Cacheable(value = "folders", key = "'folder_' + @authService.getCurrentUser().getId() + '_' + #folderId")
     public FolderDTO getFolder(UUID folderId) {
         return convertToFolderDto(getFolderEntity(folderId));
     }
