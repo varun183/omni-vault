@@ -40,3 +40,9 @@ omnivault-backend/src/main/resources/application-prod.yml
 /omnivault-backend/src/main/resources/application-prod.yml
 **/application-dev.yml
 **/application-prod.yml
+
+
+omnivault-storage/
+**/omnivault-storage/
+/omnivault-storage/
+omnivault-backend/omnivault-storage/
