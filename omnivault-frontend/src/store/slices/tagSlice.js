@@ -14,6 +14,19 @@ export const getAllTags = createAsyncThunk(
   }
 );
 
+export const getTag = createAsyncThunk(
+  "tags/getTag",
+  async (tagId, { rejectWithValue }) => {
+    try {
+      return await tagService.getTag(tagId);
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to get tag"
+      );
+    }
+  }
+);
+
 export const createTag = createAsyncThunk(
   "tags/createTag",
   async (tagData, { rejectWithValue }) => {
@@ -69,6 +82,7 @@ export const searchTags = createAsyncThunk(
 
 const initialState = {
   tags: [],
+  currentTag: null,
   loading: false,
   error: null,
   searchResults: [],
@@ -83,6 +97,9 @@ const tagSlice = createSlice({
     },
     clearTagSearchResults: (state) => {
       state.searchResults = [];
+    },
+    clearCurrentTag: (state) => {
+      state.currentTag = null;
     },
   },
   extraReducers: (builder) => {
@@ -101,6 +118,20 @@ const tagSlice = createSlice({
         state.error = action.payload;
       })
 
+      // Get Tag
+      .addCase(getTag.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getTag.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentTag = action.payload;
+      })
+      .addCase(getTag.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
       // Create Tag
       .addCase(createTag.fulfilled, (state, action) => {
         state.tags.push(action.payload);
@@ -112,11 +143,19 @@ const tagSlice = createSlice({
         if (index !== -1) {
           state.tags[index] = action.payload;
         }
+
+        if (state.currentTag && state.currentTag.id === action.payload.id) {
+          state.currentTag = action.payload;
+        }
       })
 
       // Delete Tag
       .addCase(deleteTag.fulfilled, (state, action) => {
         state.tags = state.tags.filter((t) => t.id !== action.payload);
+
+        if (state.currentTag && state.currentTag.id === action.payload) {
+          state.currentTag = null;
+        }
       })
 
       // Search Tags
@@ -134,5 +173,6 @@ const tagSlice = createSlice({
   },
 });
 
-export const { clearTagError, clearTagSearchResults } = tagSlice.actions;
+export const { clearTagError, clearTagSearchResults, clearCurrentTag } =
+  tagSlice.actions;
 export default tagSlice.reducer;
