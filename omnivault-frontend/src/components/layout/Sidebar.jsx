@@ -56,9 +56,9 @@ const Sidebar = () => {
               All Content
             </Link>
             <Link
-              to="/content/text"
+              to="/content-type/text"
               className={`flex items-center px-3 py-2 text-sm rounded-md ${
-                isActiveRoute("/content/text")
+                isActiveRoute("/content-type/text")
                   ? "bg-primary-100 text-primary-700"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
@@ -67,9 +67,9 @@ const Sidebar = () => {
               Text
             </Link>
             <Link
-              to="/content/link"
+              to="/content-type/link"
               className={`flex items-center px-3 py-2 text-sm rounded-md ${
-                isActiveRoute("/content/link")
+                isActiveRoute("/content-type/link")
                   ? "bg-primary-100 text-primary-700"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
@@ -78,9 +78,9 @@ const Sidebar = () => {
               Links
             </Link>
             <Link
-              to="/content/image"
+              to="/content-type/image"
               className={`flex items-center px-3 py-2 text-sm rounded-md ${
-                isActiveRoute("/content/image")
+                isActiveRoute("/content-type/image")
                   ? "bg-primary-100 text-primary-700"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
@@ -89,9 +89,9 @@ const Sidebar = () => {
               Images
             </Link>
             <Link
-              to="/content/video"
+              to="/content-type/video"
               className={`flex items-center px-3 py-2 text-sm rounded-md ${
-                isActiveRoute("/content/video")
+                isActiveRoute("/content-type/video")
                   ? "bg-primary-100 text-primary-700"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
@@ -100,9 +100,9 @@ const Sidebar = () => {
               Videos
             </Link>
             <Link
-              to="/content/document"
+              to="/content-type/document"
               className={`flex items-center px-3 py-2 text-sm rounded-md ${
-                isActiveRoute("/content/document")
+                isActiveRoute("/content-type/document")
                   ? "bg-primary-100 text-primary-700"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
