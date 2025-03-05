@@ -27,6 +27,13 @@ const contentService = {
     return response.data;
   },
 
+  getContentByTag: async (tagId, page = 0, size = 10) => {
+    const response = await axiosInstance.get(
+      `/contents/tag/${tagId}?page=${page}&size=${size}`
+    );
+    return response.data;
+  },
+
   getFavorites: async (page = 0, size = 10) => {
     const response = await axiosInstance.get(
       `/contents/favorites?page=${page}&size=${size}`

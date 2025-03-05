@@ -40,6 +40,59 @@ export const getFolderContent = createAsyncThunk(
   }
 );
 
+export const getContentByType = createAsyncThunk(
+  "content/getContentByType",
+  async ({ contentType, page, size }, { rejectWithValue }) => {
+    try {
+      return await contentService.getContentByType(contentType, page, size);
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || `Failed to get ${contentType} content`
+      );
+    }
+  }
+);
+
+export const getContentByTag = createAsyncThunk(
+  "content/getContentByTag",
+  async ({ tagId, page, size }, { rejectWithValue }) => {
+    try {
+      const response = await contentService.getContentByTag(tagId, page, size);
+      return response;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to get content for tag"
+      );
+    }
+  }
+);
+
+export const getFavoriteContent = createAsyncThunk(
+  "content/getFavoriteContent",
+  async ({ page, size }, { rejectWithValue }) => {
+    try {
+      return await contentService.getFavorites(page, size);
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to get favorite content"
+      );
+    }
+  }
+);
+
+export const getRecentContent = createAsyncThunk(
+  "content/getRecentContent",
+  async ({ page, size }, { rejectWithValue }) => {
+    try {
+      return await contentService.getRecent(page, size);
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to get recent content"
+      );
+    }
+  }
+);
+
 export const createTextContent = createAsyncThunk(
   "content/createTextContent",
   async (contentData, { rejectWithValue }) => {
@@ -210,6 +263,70 @@ const contentSlice = createSlice({
         state.totalPages = action.payload.totalPages;
       })
       .addCase(getFolderContent.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Get Content By Type
+      .addCase(getContentByType.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getContentByType.fulfilled, (state, action) => {
+        state.loading = false;
+        state.contents = action.payload.content;
+        state.totalElements = action.payload.totalElements;
+        state.totalPages = action.payload.totalPages;
+      })
+      .addCase(getContentByType.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Get Content By Tag
+      .addCase(getContentByTag.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getContentByTag.fulfilled, (state, action) => {
+        state.loading = false;
+        state.contents = action.payload.content;
+        state.totalElements = action.payload.totalElements;
+        state.totalPages = action.payload.totalPages;
+      })
+      .addCase(getContentByTag.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Get Favorite Content
+      .addCase(getFavoriteContent.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getFavoriteContent.fulfilled, (state, action) => {
+        state.loading = false;
+        state.contents = action.payload.content;
+        state.totalElements = action.payload.totalElements;
+        state.totalPages = action.payload.totalPages;
+      })
+      .addCase(getFavoriteContent.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Get Recent Content
+      .addCase(getRecentContent.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getRecentContent.fulfilled, (state, action) => {
+        state.loading = false;
+        state.contents = action.payload.content;
+        state.totalElements = action.payload.totalElements;
+        state.totalPages = action.payload.totalPages;
+      })
+      .addCase(getRecentContent.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
