@@ -64,29 +64,33 @@ const ContentCard = ({ content, onEdit }) => {
     switch (content.contentType) {
       case "TEXT":
         return (
-          <div className="text-sm text-gray-500 line-clamp-2">
+          <div className="text-sm text-gray-500 line-clamp-2 min-h-[2.5rem]">
             {content.textContent?.substring(0, 200)}
           </div>
         );
       case "LINK":
         return (
-          <div className="text-sm text-gray-500 truncate">{content.url}</div>
+          <div className="text-sm text-gray-500 truncate min-h-[2.5rem]">
+            {content.url}
+          </div>
         );
       case "IMAGE":
         return content.thumbnailPath ? (
-          <img
-            src={contentService.getThumbnailUrl(content.id)}
-            alt={content.title}
-            className="h-32 w-full object-cover rounded"
-          />
-        ) : null;
-      case "VIDEO":
-        return content.thumbnailPath ? (
-          <div className="relative">
+          <div className="relative pt-[56.25%] w-full">
             <img
               src={contentService.getThumbnailUrl(content.id)}
               alt={content.title}
-              className="h-32 w-full object-cover rounded"
+              className="absolute top-0 left-0 h-full w-full object-cover rounded"
+            />
+          </div>
+        ) : null;
+      case "VIDEO":
+        return content.thumbnailPath ? (
+          <div className="relative pt-[56.25%] w-full">
+            <img
+              src={contentService.getThumbnailUrl(content.id)}
+              alt={content.title}
+              className="absolute top-0 left-0 h-full w-full object-cover rounded"
             />
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="bg-black bg-opacity-50 rounded-full p-2">
@@ -102,13 +106,15 @@ const ContentCard = ({ content, onEdit }) => {
 
   return (
     <Link to={`/content/${content.id}`} className="block">
-      <div className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow p-4">
+      <div className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow p-4 flex flex-col h-full">
         <div className="flex justify-between items-start mb-2">
-          <div className="flex items-center">
+          <div className="flex items-center w-full min-w-0">
             {getContentIcon()}
-            <h3 className="ml-2 font-medium line-clamp-1">{content.title}</h3>
+            <h3 className="ml-2 font-medium flex-grow overflow-hidden">
+              <span className="block truncate">{content.title}</span>
+            </h3>
           </div>
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1 ml-2">
             <Button
               variant="ghost"
               className="p-1 text-gray-400 hover:text-yellow-500"
@@ -137,40 +143,42 @@ const ContentCard = ({ content, onEdit }) => {
           </div>
         </div>
 
-        {getPreviewContent()}
+        <div className="flex-grow flex flex-col justify-between">
+          <div className="mb-3">{getPreviewContent()}</div>
 
-        <div className="mt-3 flex items-center text-xs text-gray-500 justify-between">
-          <div className="flex items-center">
-            {content.folderId && (
-              <div className="flex items-center mr-3">
-                <FiFolder className="mr-1" />
-                <span>{content.folderName}</span>
+          <div className="mt-3 flex items-center text-xs text-gray-500 justify-between">
+            <div className="flex items-center">
+              {content.folderId && (
+                <div className="flex items-center mr-3">
+                  <FiFolder className="mr-1" />
+                  <span>{content.folderName}</span>
+                </div>
+              )}
+              <div>{format(new Date(content.createdAt), "MMM d, yyyy")}</div>
+            </div>
+
+            {content.tags && content.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {content.tags.slice(0, 2).map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs"
+                    style={{
+                      backgroundColor: `${tag.color}25`,
+                      color: tag.color,
+                    }}
+                  >
+                    {tag.name}
+                  </span>
+                ))}
+                {content.tags.length > 2 && (
+                  <span className="text-gray-500">
+                    +{content.tags.length - 2}
+                  </span>
+                )}
               </div>
             )}
-            <div>{format(new Date(content.createdAt), "MMM d, yyyy")}</div>
           </div>
-
-          {content.tags && content.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {content.tags.slice(0, 2).map((tag) => (
-                <span
-                  key={tag.id}
-                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs"
-                  style={{
-                    backgroundColor: `${tag.color}25`,
-                    color: tag.color,
-                  }}
-                >
-                  {tag.name}
-                </span>
-              ))}
-              {content.tags.length > 2 && (
-                <span className="text-gray-500">
-                  +{content.tags.length - 2}
-                </span>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </Link>
