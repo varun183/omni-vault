@@ -135,16 +135,17 @@ public class ContentController {
                         MediaType.parseMediaType(contentType) :
                         MediaType.APPLICATION_OCTET_STREAM);
 
-        // Only use "attachment" for documents and other downloadable files
-        // For images and videos, we want them to display inline
+        // Use "inline" for images, videos, and PDFs so they display in browser
         if (contentType != null &&
-                !(contentType.startsWith("image/") || contentType.startsWith("video/"))) {
-            responseBuilder.header(HttpHeaders.CONTENT_DISPOSITION,
-                    "attachment; filename=\"" + content.getOriginalFilename() + "\"");
-        } else {
-            // For images and videos, use "inline" to display in browser
+                (contentType.startsWith("image/") ||
+                        contentType.startsWith("video/") ||
+                        contentType.equals("application/pdf"))) {
             responseBuilder.header(HttpHeaders.CONTENT_DISPOSITION,
                     "inline; filename=\"" + content.getOriginalFilename() + "\"");
+        } else {
+            // Use "attachment" for other file types to force download
+            responseBuilder.header(HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=\"" + content.getOriginalFilename() + "\"");
         }
 
         return responseBuilder.body(resource);
@@ -168,3 +169,4 @@ public class ContentController {
         return ResponseEntity.ok(contentService.searchContent(query, pageable));
     }
 }
+

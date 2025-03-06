@@ -22,6 +22,7 @@ import Button from "../components/common/Button";
 import TextContentForm from "../components/features/content/TextContentForm";
 import LinkContentForm from "../components/features/content/LinkContentForm";
 import Spinner from "../components/common/Spinner";
+import DocumentViewer from "../components/features/content/DocumentViewer";
 
 const ContentDetailPage = () => {
   const { contentId } = useParams();
@@ -145,6 +146,7 @@ const ContentDetailPage = () => {
   };
 
   // Replace the renderContentBody method
+  // Then update the renderContentBody method
   const renderContentBody = () => {
     switch (currentContent.contentType) {
       case "TEXT":
@@ -193,7 +195,21 @@ const ContentDetailPage = () => {
           </div>
         );
       case "DOCUMENT":
-      case "OTHER":
+        // Unified document handling with DocumentViewer
+        return (
+          <div className="bg-white rounded-lg shadow p-6 mt-4">
+            <h3 className="text-lg font-medium mb-4">
+              {getDocumentTypeLabel(currentContent.mimeType)}
+            </h3>
+            <DocumentViewer
+              contentId={currentContent.id}
+              filename={currentContent.originalFilename}
+              mimeType={currentContent.mimeType}
+              contentService={contentService}
+            />
+          </div>
+        );
+      default:
         return (
           <div className="bg-white rounded-lg shadow p-6 mt-4 text-center">
             <p className="mb-4">
@@ -213,9 +229,35 @@ const ContentDetailPage = () => {
             </Button>
           </div>
         );
-      default:
-        return null;
     }
+  };
+
+  // Helper function to get a more descriptive document type label
+  const getDocumentTypeLabel = (mimeType) => {
+    if (!mimeType) return "Document";
+
+    if (mimeType === "application/pdf") return "PDF Document";
+    if (
+      mimeType === "application/msword" ||
+      mimeType ===
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+      return "Word Document";
+    if (
+      mimeType === "application/vnd.ms-excel" ||
+      mimeType ===
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+      return "Excel Spreadsheet";
+    if (
+      mimeType === "application/vnd.ms-powerpoint" ||
+      mimeType ===
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    )
+      return "PowerPoint Presentation";
+    if (mimeType.startsWith("text/")) return "Text Document";
+
+    return "Document";
   };
 
   return (

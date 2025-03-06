@@ -30,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -45,6 +47,7 @@ public class ContentServiceImpl implements ContentService {
     private final FolderService folderService;
     private final TagService tagService;
     private final StorageService storageService;
+    private final org.apache.tika.Tika tika = new org.apache.tika.Tika();
 
     @Override
     @Transactional(readOnly = true)
@@ -155,7 +158,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional
-    @CacheEvict(value = {"contents", "recentContents", "popularContents","tags"}, allEntries = true)
+    @CacheEvict(value = {"contents", "recentContents", "popularContents","tags", "contentsByType"}, allEntries = true)
     public ContentDTO createTextContent(TextContentCreateRequest request) {
         User currentUser = authService.getCurrentUser();
 
@@ -215,7 +218,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional
-    @CacheEvict(value = {"contents", "recentContents", "popularContents","tags"}, allEntries = true)
+    @CacheEvict(value = {"contents", "recentContents", "popularContents","tags,", "contentsByType"}, allEntries = true)
     public ContentDTO createLinkContent(LinkContentCreateRequest request) {
         User currentUser = authService.getCurrentUser();
 
@@ -273,9 +276,78 @@ public class ContentServiceImpl implements ContentService {
         return convertToContentDto(savedContent);
     }
 
+    /**
+     * Improves MIME type detection beyond what the browser/client provides
+     * @param file The uploaded file
+     * @param originalFilename The original filename
+     * @return The detected MIME type
+     */
+    private String detectMimeType(MultipartFile file, String originalFilename) {
+        // First, try to use the MIME type provided by the client
+        String mimeType = file.getContentType();
+
+        // If no MIME type is provided or it's the generic "application/octet-stream",
+        // try to detect it based on file extension
+        if (mimeType == null || mimeType.equals("application/octet-stream")) {
+            String extension = FilenameUtils.getExtension(originalFilename).toLowerCase();
+
+            // Map of common extensions to MIME types
+            Map<String, String> mimeTypeMap = new HashMap<>();
+
+            // Text files
+            mimeTypeMap.put("txt", "text/plain");
+            mimeTypeMap.put("log", "text/plain");
+            mimeTypeMap.put("text", "text/plain");
+            mimeTypeMap.put("csv", "text/csv");
+            mimeTypeMap.put("tsv", "text/tab-separated-values");
+            mimeTypeMap.put("md", "text/markdown");
+            mimeTypeMap.put("markdown", "text/markdown");
+            mimeTypeMap.put("json", "application/json");
+            mimeTypeMap.put("xml", "application/xml");
+            mimeTypeMap.put("html", "text/html");
+            mimeTypeMap.put("htm", "text/html");
+            mimeTypeMap.put("css", "text/css");
+            mimeTypeMap.put("js", "application/javascript");
+
+            // Document files
+            mimeTypeMap.put("pdf", "application/pdf");
+            mimeTypeMap.put("doc", "application/msword");
+            mimeTypeMap.put("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+            mimeTypeMap.put("xls", "application/vnd.ms-excel");
+            mimeTypeMap.put("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            mimeTypeMap.put("ppt", "application/vnd.ms-powerpoint");
+            mimeTypeMap.put("pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+
+            // Use the extension-based MIME type if available
+            if (mimeTypeMap.containsKey(extension)) {
+                mimeType = mimeTypeMap.get(extension);
+            }
+        }
+
+        // If still not determined, try Apache Tika for more accurate detection
+        if (mimeType == null || mimeType.equals("application/octet-stream")) {
+            try {
+                // Create a temporary file to use with Tika
+                File tempFile = File.createTempFile("detect-mime-", "-" + FilenameUtils.getExtension(originalFilename));
+                file.transferTo(tempFile);
+
+                // Use Tika to detect the MIME type
+                mimeType = tika.detect(tempFile);
+
+                // Clean up
+                tempFile.delete();
+            } catch (IOException e) {
+                log.warn("Failed to detect MIME type using Tika: {}", e.getMessage());
+            }
+        }
+
+        // Default to octet-stream if all detection methods fail
+        return mimeType != null ? mimeType : "application/octet-stream";
+    }
+
     @Override
     @Transactional
-    @CacheEvict(value = {"contents", "recentContents", "popularContents","tags"}, allEntries = true)
+    @CacheEvict(value = {"contents", "recentContents", "popularContents","tags", "contentsByType"}, allEntries = true)
     public ContentDTO createFileContent(
             MultipartFile file,
             String title,
@@ -352,7 +424,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional
-    @CacheEvict(value = {"contents", "recentContents", "popularContents"}, allEntries = true)
+    @CacheEvict(value = {"contents", "recentContents", "popularContents", "tags", "contentsByType"}, allEntries = true)
     public ContentDTO updateContent(UUID contentId, ContentUpdateRequest request) {
         Content content = getContentEntity(contentId);
         User currentUser = authService.getCurrentUser();
@@ -434,7 +506,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional
-    @CacheEvict(value = {"contents", "recentContents", "popularContents"}, allEntries = true)
+    @CacheEvict(value = {"contents", "recentContents", "popularContents", "tags", "contentsByType"}, allEntries = true)
     public ContentDTO toggleFavorite(UUID contentId) {
         Content content = getContentEntity(contentId);
         content.setFavorite(!content.isFavorite());
@@ -482,7 +554,7 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional
-    @CacheEvict(value = {"contents", "recentContents", "popularContents"}, allEntries = true)
+    @CacheEvict(value = {"contents", "recentContents", "popularContents", "tags", "contentsByType"}, allEntries = true)
     public void deleteContent(UUID contentId) {
         Content content = getContentEntity(contentId);
 
@@ -545,6 +617,8 @@ public class ContentServiceImpl implements ContentService {
         });
     }
 
+    // Update the determineContentType method in ContentServiceImpl.java
+
     private ContentType determineContentType(String filename) {
         if (filename == null) {
             return ContentType.OTHER;
@@ -553,17 +627,30 @@ public class ContentServiceImpl implements ContentService {
         String extension = FilenameUtils.getExtension(filename).toLowerCase();
 
         // Image extensions
-        if (Arrays.asList("jpg", "jpeg", "png", "gif", "bmp", "svg", "webp").contains(extension)) {
+        if (Arrays.asList("jpg", "jpeg", "png", "gif", "bmp", "svg", "webp", "tiff", "ico").contains(extension)) {
             return ContentType.IMAGE;
         }
 
         // Video extensions
-        if (Arrays.asList("mp4", "avi", "mov", "wmv", "flv", "mkv", "webm").contains(extension)) {
+        if (Arrays.asList("mp4", "avi", "mov", "wmv", "flv", "mkv", "webm", "m4v", "mpg", "mpeg").contains(extension)) {
             return ContentType.VIDEO;
         }
 
-        // Document extensions
-        if (Arrays.asList("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv", "md").contains(extension)) {
+        // Document extensions - expanded list with explicitly listed text formats
+        if (Arrays.asList(
+                // Common document types
+                "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+                // Text files - explicitly included
+                "txt", "text", "log", "rtf", "csv", "tsv", "md", "markdown", "json", "xml", "html", "htm", "css", "js",
+                // Data formats
+                "yaml", "yml", "toml", "ini", "cfg", "conf",
+                // Code files (which are text-based)
+                "java", "py", "rb", "php", "c", "cpp", "h", "cs", "js", "jsx", "ts", "tsx", "go", "rs", "swift",
+                // Other office formats
+                "odt", "ods", "odp", "odg", "odf",
+                // Archive formats that might contain documents
+                "zip", "rar", "7z", "tar", "gz"
+        ).contains(extension)) {
             return ContentType.DOCUMENT;
         }
 

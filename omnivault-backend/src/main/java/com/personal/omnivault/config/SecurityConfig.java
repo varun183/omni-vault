@@ -2,6 +2,8 @@ package com.personal.omnivault.config;
 
 import com.personal.omnivault.security.JwtAuthenticationEntryPoint;
 import com.personal.omnivault.security.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +18,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.HeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -50,6 +53,20 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.disable())
+                        .xssProtection(xss -> xss.disable())
+                        // Customize which endpoints should have X-Frame-Options applied
+                        .addHeaderWriter(new HeaderWriter() {
+                            @Override
+                            public void writeHeaders(HttpServletRequest request, HttpServletResponse response) {
+                                // Only apply X-Frame-Options to non-content file URLs
+                                if (!request.getRequestURI().matches(".*/contents/.*/file.*")) {
+                                    response.setHeader("X-Frame-Options", "DENY");
+                                }
+                            }
+                        })
+                )
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/auth/**").permitAll()

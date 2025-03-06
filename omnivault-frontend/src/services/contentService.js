@@ -119,14 +119,20 @@ const contentService = {
   },
 
   getFileUrl: (contentId) => {
-    return `${axiosInstance.defaults.baseURL}/contents/${contentId}/file`;
+    const baseUrl = `${axiosInstance.defaults.baseURL}/contents/${contentId}/file`;
+    const token = localStorage.getItem("access_token");
+    // Return URL with auth token for direct browser access (like in iframes)
+    return token ? `${baseUrl}?token=${token}` : baseUrl;
   },
 
   getThumbnailUrl: (contentId) => {
-    return `${axiosInstance.defaults.baseURL}/contents/${contentId}/thumbnail`;
+    const baseUrl = `${axiosInstance.defaults.baseURL}/contents/${contentId}/thumbnail`;
+    const token = localStorage.getItem("access_token");
+    // Return URL with auth token for direct browser access
+    return token ? `${baseUrl}?token=${token}` : baseUrl;
   },
 
-  // Add new methods for authenticated file access
+  // These methods remain the same for programmatic access
   fetchFileWithAuth: async (contentId) => {
     try {
       const response = await axiosInstance.get(`/contents/${contentId}/file`, {
@@ -137,6 +143,22 @@ const contentService = {
       console.error("Error fetching file:", error);
       return null;
     }
+  },
+
+  // Method to check if a document can be viewed in browser
+  canViewDocumentInBrowser: (mimeType) => {
+    if (!mimeType) return false;
+
+    const viewableTypes = [
+      "application/pdf",
+      "text/plain",
+      "text/html",
+      "text/csv",
+      "text/markdown",
+      "image/svg+xml",
+    ];
+
+    return viewableTypes.includes(mimeType) || mimeType.startsWith("text/");
   },
 
   fetchThumbnailWithAuth: async (contentId) => {
