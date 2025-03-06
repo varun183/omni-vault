@@ -1,4 +1,3 @@
-// src/pages/TagsPage.jsx
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
@@ -94,39 +93,45 @@ const TagsPage = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {tags.map((tag) => (
             <Link
               key={tag.id}
               to={`/tag/${tag.id}`}
-              className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow relative"
+              className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow relative min-h-[120px] flex flex-col"
             >
-              <div className="absolute top-2 right-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-400 hover:text-primary-500 p-1"
-                  onClick={(e) => handleEditTag(tag, e)}
-                >
-                  <FiEdit size={16} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-400 hover:text-red-500 p-1"
-                  onClick={(e) => handleDeleteTag(tag, e)}
-                >
-                  <FiTrash size={16} />
-                </Button>
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center w-full">
+                  <span
+                    className="w-5 h-5 rounded-full mr-2 flex-shrink-0"
+                    style={{ backgroundColor: tag.color }}
+                  ></span>
+                  <span className="font-medium flex-grow max-w-full">
+                    <span className="block text-ellipsis overflow-hidden">
+                      {tag.name}
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-400 hover:text-primary-500 p-1"
+                    onClick={(e) => handleEditTag(tag, e)}
+                  >
+                    <FiEdit size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-400 hover:text-red-500 p-1"
+                    onClick={(e) => handleDeleteTag(tag, e)}
+                  >
+                    <FiTrash size={16} />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center">
-                <span
-                  className="w-5 h-5 rounded-full mr-2"
-                  style={{ backgroundColor: tag.color }}
-                ></span>
-                <span className="font-medium">{tag.name}</span>
-              </div>
-              <div className="text-sm text-gray-500 mt-2">
+              <div className="text-sm text-gray-500 mt-auto">
                 {tag.contentCount || 0}{" "}
                 {tag.contentCount === 1 ? "item" : "items"}
               </div>
