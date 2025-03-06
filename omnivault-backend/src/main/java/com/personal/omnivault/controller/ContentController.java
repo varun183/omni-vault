@@ -127,21 +127,37 @@ public class ContentController {
     @GetMapping("/{contentId}/file")
     public ResponseEntity<Resource> getContentFile(@PathVariable UUID contentId) {
         Resource resource = contentService.getContentFile(contentId);
-        String contentType = contentService.getContent(contentId).getMimeType();
+        ContentDTO content = contentService.getContent(contentId);
+        String contentType = content.getMimeType();
 
-        return ResponseEntity.ok()
-                .contentType(contentType != null ? MediaType.parseMediaType(contentType) : MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" +
-                        contentService.getContent(contentId).getOriginalFilename() + "\"")
-                .body(resource);
+        ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
+                .contentType(contentType != null ?
+                        MediaType.parseMediaType(contentType) :
+                        MediaType.APPLICATION_OCTET_STREAM);
+
+        // Only use "attachment" for documents and other downloadable files
+        // For images and videos, we want them to display inline
+        if (contentType != null &&
+                !(contentType.startsWith("image/") || contentType.startsWith("video/"))) {
+            responseBuilder.header(HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=\"" + content.getOriginalFilename() + "\"");
+        } else {
+            // For images and videos, use "inline" to display in browser
+            responseBuilder.header(HttpHeaders.CONTENT_DISPOSITION,
+                    "inline; filename=\"" + content.getOriginalFilename() + "\"");
+        }
+
+        return responseBuilder.body(resource);
     }
 
     @GetMapping("/{contentId}/thumbnail")
     public ResponseEntity<Resource> getContentThumbnail(@PathVariable UUID contentId) {
         Resource resource = contentService.getContentThumbnail(contentId);
 
+        // Always use inline disposition for thumbnails
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_JPEG)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
                 .body(resource);
     }
 

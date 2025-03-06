@@ -86,6 +86,65 @@ const ContentDetailPage = () => {
     );
   }
 
+  const AuthenticatedMedia = ({ contentId, type, alt, className }) => {
+    const [mediaUrl, setMediaUrl] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+      const fetchMedia = async () => {
+        try {
+          setLoading(true);
+          const url = await contentService.fetchFileWithAuth(contentId);
+          setMediaUrl(url);
+          setLoading(false);
+        } catch (err) {
+          console.error("Error loading media:", err);
+          setError("Failed to load media");
+          setLoading(false);
+        }
+      };
+
+      fetchMedia();
+
+      // Clean up object URL when component unmounts
+      return () => {
+        if (mediaUrl) {
+          URL.revokeObjectURL(mediaUrl);
+        }
+      };
+    }, [contentId]);
+
+    if (loading) {
+      return (
+        <div
+          className={`${className} bg-gray-200 animate-pulse flex items-center justify-center`}
+        >
+          <Spinner size="md" />
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div
+          className={`${className} bg-gray-100 flex items-center justify-center text-red-500`}
+        >
+          {error}
+        </div>
+      );
+    }
+
+    if (type === "image") {
+      return <img src={mediaUrl} alt={alt} className={className} />;
+    } else if (type === "video") {
+      return <video src={mediaUrl} controls className={className} />;
+    }
+
+    return null;
+  };
+
+  // Replace the renderContentBody method
   const renderContentBody = () => {
     switch (currentContent.contentType) {
       case "TEXT":
@@ -115,8 +174,9 @@ const ContentDetailPage = () => {
       case "IMAGE":
         return (
           <div className="bg-white rounded-lg shadow p-6 mt-4">
-            <img
-              src={contentService.getFileUrl(currentContent.id)}
+            <AuthenticatedMedia
+              contentId={currentContent.id}
+              type="image"
               alt={currentContent.title}
               className="max-w-full rounded"
             />
@@ -125,9 +185,9 @@ const ContentDetailPage = () => {
       case "VIDEO":
         return (
           <div className="bg-white rounded-lg shadow p-6 mt-4">
-            <video
-              src={contentService.getFileUrl(currentContent.id)}
-              controls
+            <AuthenticatedMedia
+              contentId={currentContent.id}
+              type="video"
               className="max-w-full rounded"
             />
           </div>
@@ -140,10 +200,12 @@ const ContentDetailPage = () => {
               This file type may not be viewable in the browser.
             </p>
             <Button
-              as="a"
-              href={contentService.getFileUrl(currentContent.id)}
-              target="_blank"
-              download={currentContent.originalFilename}
+              onClick={() =>
+                contentService.downloadFile(
+                  currentContent.id,
+                  currentContent.originalFilename
+                )
+              }
               className="flex items-center mx-auto"
             >
               <FiDownload className="mr-2" />

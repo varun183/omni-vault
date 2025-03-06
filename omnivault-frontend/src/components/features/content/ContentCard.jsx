@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import {
@@ -19,6 +19,38 @@ import {
 import contentService from "../../../services/contentService";
 import Button from "../../common/Button";
 import { format } from "date-fns";
+
+const AuthenticatedImage = ({ contentId, alt, isThumb = false, className }) => {
+  const [imageUrl, setImageUrl] = useState(null);
+
+  useEffect(() => {
+    const fetchImage = async () => {
+      try {
+        const url = isThumb
+          ? await contentService.fetchThumbnailWithAuth(contentId)
+          : await contentService.fetchFileWithAuth(contentId);
+        setImageUrl(url);
+      } catch (error) {
+        console.error("Error loading image:", error);
+      }
+    };
+
+    fetchImage();
+
+    // Clean up object URL when component unmounts
+    return () => {
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+    };
+  }, [contentId, isThumb]);
+
+  if (!imageUrl) {
+    return <div className={`${className} bg-gray-200 animate-pulse`}></div>;
+  }
+
+  return <img src={imageUrl} alt={alt} className={className} />;
+};
 
 const ContentCard = ({ content, onEdit }) => {
   const dispatch = useDispatch();
@@ -76,20 +108,26 @@ const ContentCard = ({ content, onEdit }) => {
         );
       case "IMAGE":
         return content.thumbnailPath ? (
-          <div className="relative pt-[56.25%] w-full">
-            <img
-              src={contentService.getThumbnailUrl(content.id)}
+          <div className="relative pt-[56.25%] w-full overflow-hidden">
+            {" "}
+            {/* This container has proper aspect ratio */}
+            <AuthenticatedImage
+              contentId={content.id}
               alt={content.title}
+              isThumb={true}
               className="absolute top-0 left-0 h-full w-full object-cover rounded"
             />
           </div>
         ) : null;
       case "VIDEO":
         return content.thumbnailPath ? (
-          <div className="relative pt-[56.25%] w-full">
-            <img
-              src={contentService.getThumbnailUrl(content.id)}
+          <div className="relative pt-[56.25%] w-full overflow-hidden">
+            {" "}
+            {/* Added overflow-hidden */}
+            <AuthenticatedImage
+              contentId={content.id}
               alt={content.title}
+              isThumb={true}
               className="absolute top-0 left-0 h-full w-full object-cover rounded"
             />
             <div className="absolute inset-0 flex items-center justify-center">

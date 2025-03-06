@@ -125,6 +125,54 @@ const contentService = {
   getThumbnailUrl: (contentId) => {
     return `${axiosInstance.defaults.baseURL}/contents/${contentId}/thumbnail`;
   },
+
+  // Add new methods for authenticated file access
+  fetchFileWithAuth: async (contentId) => {
+    try {
+      const response = await axiosInstance.get(`/contents/${contentId}/file`, {
+        responseType: "blob",
+      });
+      return URL.createObjectURL(response.data);
+    } catch (error) {
+      console.error("Error fetching file:", error);
+      return null;
+    }
+  },
+
+  fetchThumbnailWithAuth: async (contentId) => {
+    try {
+      const response = await axiosInstance.get(
+        `/contents/${contentId}/thumbnail`,
+        {
+          responseType: "blob",
+        }
+      );
+      return URL.createObjectURL(response.data);
+    } catch (error) {
+      console.error("Error fetching thumbnail:", error);
+      return null;
+    }
+  },
+
+  downloadFile: async (contentId, filename) => {
+    try {
+      const response = await axiosInstance.get(`/contents/${contentId}/file`, {
+        responseType: "blob",
+      });
+
+      // Create a blob URL and trigger download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename || "download");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+    }
+  },
 };
 
 export default contentService;
