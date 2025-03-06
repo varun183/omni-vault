@@ -506,7 +506,11 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     @Transactional
-    @CacheEvict(value = {"contents", "recentContents", "popularContents", "tags", "contentsByType"}, allEntries = true)
+    @CacheEvict(value = {"contents",
+            "recentContents",
+            "popularContents",
+            "contentsByFolder",
+            "contentsByType"}, allEntries = true)
     public ContentDTO toggleFavorite(UUID contentId) {
         Content content = getContentEntity(contentId);
         content.setFavorite(!content.isFavorite());
