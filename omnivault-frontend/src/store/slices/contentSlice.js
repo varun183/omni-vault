@@ -146,6 +146,11 @@ export const updateContent = createAsyncThunk(
   "content/updateContent",
   async ({ contentId, contentData }, { rejectWithValue }) => {
     try {
+      // Clear cache for this content
+      apiCache.remove(`content_${contentId}`);
+      // Also clear any cache that might include this content
+      apiCache.clear("thumbnails_");
+
       return await contentService.updateContent(contentId, contentData);
     } catch (error) {
       return rejectWithValue(
@@ -203,6 +208,7 @@ const initialState = {
   loading: false,
   error: null,
   searchResults: null,
+  contentMap: {},
 };
 
 const contentSlice = createSlice({
@@ -225,12 +231,18 @@ const contentSlice = createSlice({
       .addCase(getAllContent.pending, (state) => {
         state.loading = true;
         state.error = null;
-      })
+      });
+    builder
       .addCase(getAllContent.fulfilled, (state, action) => {
         state.loading = false;
         state.contents = action.payload.content;
         state.totalElements = action.payload.totalElements;
         state.totalPages = action.payload.totalPages;
+
+        // Add to content map
+        action.payload.content.forEach((item) => {
+          state.contentMap[item.id] = item;
+        });
       })
       .addCase(getAllContent.rejected, (state, action) => {
         state.loading = false;
@@ -241,10 +253,12 @@ const contentSlice = createSlice({
       .addCase(getContent.pending, (state) => {
         state.loading = true;
         state.error = null;
-      })
+      });
+    builder
       .addCase(getContent.fulfilled, (state, action) => {
         state.loading = false;
         state.currentContent = action.payload;
+        state.contentMap[action.payload.id] = action.payload;
       })
       .addCase(getContent.rejected, (state, action) => {
         state.loading = false;

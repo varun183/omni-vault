@@ -1,4 +1,5 @@
 import axiosInstance from "./axiosInstance";
+import { apiCache } from "../utils/apiCache";
 
 const tagService = {
   getAllTags: async () => {
@@ -7,7 +8,19 @@ const tagService = {
   },
 
   getTag: async (tagId) => {
+    const cacheKey = `tag_${tagId}`;
+
+    // Try to get from cache first
+    const cachedTag = apiCache.get(cacheKey);
+    if (cachedTag) {
+      return cachedTag;
+    }
+
+    // Not in cache, fetch from API
     const response = await axiosInstance.get(`/tags/${tagId}`);
+
+    // Store in cache before returning
+    apiCache.set(cacheKey, response.data);
     return response.data;
   },
 

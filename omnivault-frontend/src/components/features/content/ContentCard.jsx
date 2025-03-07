@@ -19,17 +19,30 @@ import {
 import contentService from "../../../services/contentService";
 import Button from "../../common/Button";
 import { format } from "date-fns";
+import { apiCache } from "../../../utils/apiCache";
 
 const AuthenticatedImage = ({ contentId, alt, isThumb = false, className }) => {
   const [imageUrl, setImageUrl] = useState(null);
 
   useEffect(() => {
+    // Get from cache if available
+    const cacheKey = `image_${contentId}_${isThumb ? "thumb" : "full"}`;
+    const cachedUrl = apiCache.get(cacheKey);
+
+    if (cachedUrl) {
+      setImageUrl(cachedUrl);
+      return;
+    }
+
     const fetchImage = async () => {
       try {
         const url = isThumb
           ? await contentService.fetchThumbnailWithAuth(contentId)
           : await contentService.fetchFileWithAuth(contentId);
         setImageUrl(url);
+
+        // Cache the URL - images can be cached longer
+        apiCache.set(cacheKey, url, 10 * 60 * 1000); // 10 minutes
       } catch (error) {
         console.error("Error loading image:", error);
       }
@@ -39,7 +52,7 @@ const AuthenticatedImage = ({ contentId, alt, isThumb = false, className }) => {
 
     // Clean up object URL when component unmounts
     return () => {
-      if (imageUrl) {
+      if (imageUrl && imageUrl.startsWith("blob:")) {
         URL.revokeObjectURL(imageUrl);
       }
     };
@@ -109,8 +122,6 @@ const ContentCard = ({ content, onEdit }) => {
       case "IMAGE":
         return content.thumbnailPath ? (
           <div className="relative pt-[56.25%] w-full overflow-hidden">
-            {" "}
-            {/* This container has proper aspect ratio */}
             <AuthenticatedImage
               contentId={content.id}
               alt={content.title}
@@ -118,7 +129,12 @@ const ContentCard = ({ content, onEdit }) => {
               className="absolute top-0 left-0 h-full w-full object-cover rounded"
             />
           </div>
-        ) : null;
+        ) : (
+          // Fallback when no thumbnail is available
+          <div className="relative pt-[56.25%] w-full overflow-hidden bg-gray-200 flex items-center justify-center">
+            <FiImage className="h-8 w-8 text-gray-400 absolute" />
+          </div>
+        );
       case "VIDEO":
         return content.thumbnailPath ? (
           <div className="relative pt-[56.25%] w-full overflow-hidden">

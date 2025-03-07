@@ -12,6 +12,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/contents")
@@ -133,7 +135,8 @@ public class ContentController {
         ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
                 .contentType(contentType != null ?
                         MediaType.parseMediaType(contentType) :
-                        MediaType.APPLICATION_OCTET_STREAM);
+                        MediaType.APPLICATION_OCTET_STREAM)
+                .cacheControl(CacheControl.maxAge(24, TimeUnit.HOURS)); ;
 
         // Use "inline" for images, videos, and PDFs so they display in browser
         if (contentType != null &&
@@ -159,6 +162,7 @@ public class ContentController {
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_JPEG)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+                .cacheControl(CacheControl.maxAge(24, TimeUnit.HOURS))
                 .body(resource);
     }
 

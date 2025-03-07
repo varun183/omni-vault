@@ -1,4 +1,5 @@
 import axiosInstance from "./axiosInstance";
+import { apiCache } from "../utils/apiCache";
 
 const contentService = {
   getAllContent: async (page = 0, size = 10) => {
@@ -9,15 +10,32 @@ const contentService = {
   },
 
   getContent: async (contentId) => {
-    const response = await axiosInstance.get(`/contents/${contentId}`);
-    return response.data;
-  },
+    const cacheKey = `content_${contentId}`;
 
-  getFolderContent: async (folderId, page = 0, size = 10) => {
-    const response = await axiosInstance.get(
-      `/contents/folder/${folderId}?page=${page}&size=${size}`
-    );
-    return response.data;
+    // Try to get from cache first and check if it's fresh (less than 5 minutes old)
+    const cachedContent = apiCache.get(cacheKey);
+    if (cachedContent && cachedContent._timestamp) {
+      const now = Date.now();
+      const ageInMinutes = (now - cachedContent._timestamp) / (1000 * 60);
+
+      // Use cache if it's less than 5 minutes old
+      if (ageInMinutes < 5) {
+        return cachedContent;
+      }
+    }
+
+    // If not in cache or stale, fetch from API
+    const response = await axiosInstance.get(`/contents/${contentId}`);
+
+    // Add timestamp to the response data
+    const responseWithTimestamp = {
+      ...response.data,
+      _timestamp: Date.now(),
+    };
+
+    // Store in cache before returning
+    apiCache.set(cacheKey, responseWithTimestamp);
+    return responseWithTimestamp;
   },
 
   getContentByType: async (contentType, page = 0, size = 10) => {
@@ -95,6 +113,11 @@ const contentService = {
   },
 
   updateContent: async (contentId, contentData) => {
+    // Invalidate cache for this content
+    apiCache.remove(`content_${contentId}`);
+    // Also clear any thumbnail caches that might include this content
+    apiCache.clear(`thumbnails_`);
+
     const response = await axiosInstance.put(
       `/contents/${contentId}`,
       contentData
@@ -130,6 +153,56 @@ const contentService = {
     const token = localStorage.getItem("access_token");
     // Return URL with auth token for direct browser access
     return token ? `${baseUrl}?token=${token}` : baseUrl;
+  },
+
+  fetchBatchThumbnails: async (contentIds) => {
+    if (!contentIds || contentIds.length === 0) return {};
+
+    // Create cache key for this batch
+    const cacheKey = `thumbnails_${contentIds.sort().join("_")}`;
+
+    // Try cache first
+    const cachedResults = apiCache.get(cacheKey);
+    if (cachedResults) return cachedResults;
+
+    // If not in cache, fetch individually
+    const results = {};
+    await Promise.all(
+      contentIds.map(async (id) => {
+        try {
+          // First check if the content item has a thumbnailPath
+          const contentResponse = await axiosInstance.get(`/contents/${id}`);
+          const contentItem = contentResponse.data;
+
+          // Only try to fetch thumbnail if it actually has one
+          if (contentItem.thumbnailPath) {
+            try {
+              const response = await axiosInstance.get(
+                `/contents/${id}/thumbnail`,
+                {
+                  responseType: "blob",
+                }
+              );
+              results[id] = URL.createObjectURL(response.data);
+            } catch (thumbnailError) {
+              console.log(`Thumbnail not available for ${id}`);
+              // Don't store an error in results, just skip this one
+            }
+          } else {
+            console.log(`Content ${id} has no thumbnail path`);
+          }
+        } catch (error) {
+          console.log(
+            `Error fetching content or thumbnail for ${id}:`,
+            error.message
+          );
+        }
+      })
+    );
+
+    // Cache the batch result - shorter TTL for thumbnails
+    apiCache.set(cacheKey, results, 2 * 60 * 1000); // 2 minutes
+    return results;
   },
 
   // These methods remain the same for programmatic access

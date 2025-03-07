@@ -10,6 +10,7 @@ import Spinner from "../components/common/Spinner";
 import TextContentForm from "../components/features/content/TextContentForm";
 import LinkContentForm from "../components/features/content/LinkContentForm";
 import FileUploadForm from "../components/features/content/FileUploadForm";
+import contentService from "../services/contentService";
 
 const HomePage = () => {
   const dispatch = useDispatch();
@@ -23,7 +24,26 @@ const HomePage = () => {
   const [isFileUploadOpen, setIsFileUploadOpen] = useState(false);
 
   useEffect(() => {
-    dispatch(getAllContent({ page: currentPage, size: 12 }));
+    const loadContents = async () => {
+      // First load the content list, which is already paginated
+      const action = await dispatch(
+        getAllContent({ page: currentPage, size: 12 })
+      ).unwrap();
+
+      // If we have contents, preload thumbnails in batch
+      if (action?.content?.length > 0) {
+        const contentIds = action.content
+          .filter((content) => content.thumbnailPath) // Only include items with thumbnails
+          .map((content) => content.id);
+
+        if (contentIds.length > 0) {
+          // This will cache the thumbnails
+          await contentService.fetchBatchThumbnails(contentIds);
+        }
+      }
+    };
+
+    loadContents();
   }, [dispatch, currentPage]);
 
   const handlePageChange = (newPage) => {

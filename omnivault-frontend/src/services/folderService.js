@@ -1,4 +1,5 @@
 import axiosInstance from "./axiosInstance";
+import { apiCache } from "../utils/apiCache";
 
 const folderService = {
   getRootFolders: async () => {
@@ -7,7 +8,19 @@ const folderService = {
   },
 
   getFolder: async (folderId) => {
+    const cacheKey = `folder_${folderId}`;
+
+    // Try to get from cache first
+    const cachedFolder = apiCache.get(cacheKey);
+    if (cachedFolder) {
+      return cachedFolder;
+    }
+
+    // Not in cache, fetch from API
     const response = await axiosInstance.get(`/folders/${folderId}`);
+
+    // Store in cache before returning
+    apiCache.set(cacheKey, response.data);
     return response.data;
   },
 
