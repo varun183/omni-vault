@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   FiPlus,
@@ -17,11 +17,11 @@ import Spinner from "../components/common/Spinner";
 import TextContentForm from "../components/features/content/TextContentForm";
 import LinkContentForm from "../components/features/content/LinkContentForm";
 import FileUploadForm from "../components/features/content/FileUploadForm";
+import { getContentTypeIcon as contentTypeIconUtil } from "../utils/contentUtils";
 
 const ContentTypePage = () => {
   const { contentType } = useParams();
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { contents, loading, totalElements, totalPages } = useSelector(
     (state) => state.content
   );
@@ -56,37 +56,23 @@ const ContentTypePage = () => {
     }
   };
 
-  const getContentTypeIcon = () => {
-    switch (contentType.toUpperCase()) {
-      case "TEXT":
-        return <FiFileText className="text-blue-500" />;
-      case "LINK":
-        return <FiLink className="text-green-500" />;
-      case "IMAGE":
-        return <FiImage className="text-purple-500" />;
-      case "VIDEO":
-        return <FiVideo className="text-red-500" />;
-      case "DOCUMENT":
-        return <FiFile className="text-orange-500" />;
+  const renderContentTypeIcon = () => {
+    const iconConfig = contentTypeIconUtil(contentType.toUpperCase());
+
+    // Map to icon components
+    switch (iconConfig.name) {
+      case "FileText":
+        return <FiFileText className={iconConfig.color} />;
+      case "Link":
+        return <FiLink className={iconConfig.color} />;
+      case "Image":
+        return <FiImage className={iconConfig.color} />;
+      case "Video":
+        return <FiVideo className={iconConfig.color} />;
+      case "File":
+        return <FiFile className={iconConfig.color} />;
       default:
         return <FiFile className="text-gray-500" />;
-    }
-  };
-
-  const getContentTypeName = () => {
-    switch (contentType.toUpperCase()) {
-      case "TEXT":
-        return "Text Notes";
-      case "LINK":
-        return "Links";
-      case "IMAGE":
-        return "Images";
-      case "VIDEO":
-        return "Videos";
-      case "DOCUMENT":
-        return "Documents";
-      default:
-        return "Files";
     }
   };
 
@@ -108,8 +94,7 @@ const ContentTypePage = () => {
     <Layout>
       <div className="mb-6 flex justify-between items-center">
         <div className="flex items-center">
-          {getContentTypeIcon()}
-          <h1 className="text-2xl font-bold ml-2">{getContentTypeName()}</h1>
+          <h1 className="text-2xl font-bold ml-2">{renderContentTypeIcon()}</h1>
           <p className="text-gray-500 ml-3">
             {totalElements} {totalElements === 1 ? "item" : "items"}
           </p>

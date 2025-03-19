@@ -20,6 +20,20 @@ import contentService from "../../../services/contentService";
 import Button from "../../common/Button";
 import { format } from "date-fns";
 import { apiCache } from "../../../utils/apiCache";
+import {
+  getContentPreviewConfig,
+  getContentTypeIcon,
+} from "../../../utils/contentUtils";
+import AuthenticatedMedia from "../../common/AuthenticatedMedia";
+
+const iconMap = {
+  FileText: FiFileText,
+  Link: FiLink,
+  Image: FiImage,
+  Video: FiVideo,
+  File: FiFile,
+  Folder: FiFolder,
+};
 
 const AuthenticatedImage = ({ contentId, alt, isThumb = false, className }) => {
   const [imageUrl, setImageUrl] = useState(null);
@@ -56,7 +70,7 @@ const AuthenticatedImage = ({ contentId, alt, isThumb = false, className }) => {
         URL.revokeObjectURL(imageUrl);
       }
     };
-  }, [contentId, isThumb]);
+  }, [contentId, imageUrl, isThumb]);
 
   if (!imageUrl) {
     return <div className={`${className} bg-gray-200 animate-pulse`}></div>;
@@ -89,41 +103,33 @@ const ContentCard = ({ content, onEdit }) => {
   };
 
   const getContentIcon = () => {
-    switch (content.contentType) {
-      case "TEXT":
-        return <FiFileText className="h-6 w-6 text-blue-500" />;
-      case "LINK":
-        return <FiLink className="h-6 w-6 text-green-500" />;
-      case "IMAGE":
-        return <FiImage className="h-6 w-6 text-purple-500" />;
-      case "VIDEO":
-        return <FiVideo className="h-6 w-6 text-red-500" />;
-      case "DOCUMENT":
-        return <FiFile className="h-6 w-6 text-orange-500" />;
-      default:
-        return <FiFile className="h-6 w-6 text-gray-500" />;
-    }
+    const iconConfig = getContentTypeIcon(content.contentType);
+    const IconComponent = iconMap[iconConfig.name];
+    return <IconComponent className={`h-6 w-6 ${iconConfig.color}`} />;
   };
 
   const getPreviewContent = () => {
-    switch (content.contentType) {
-      case "TEXT":
+    const previewConfig = getContentPreviewConfig(content);
+
+    switch (previewConfig.type) {
+      case "text":
         return (
           <div className="text-sm text-gray-500 line-clamp-2 min-h-[2.5rem]">
-            {content.textContent?.substring(0, 200)}
+            {previewConfig.preview}
           </div>
         );
-      case "LINK":
+      case "link":
         return (
           <div className="text-sm text-gray-500 truncate min-h-[2.5rem]">
-            {content.url}
+            {previewConfig.preview}
           </div>
         );
-      case "IMAGE":
-        return content.thumbnailPath ? (
+      case "image":
+        return previewConfig.hasThumbnail ? (
           <div className="relative pt-[56.25%] w-full overflow-hidden">
-            <AuthenticatedImage
+            <AuthenticatedMedia
               contentId={content.id}
+              type="image"
               alt={content.title}
               isThumb={true}
               className="absolute top-0 left-0 h-full w-full object-cover rounded"
@@ -135,13 +141,12 @@ const ContentCard = ({ content, onEdit }) => {
             <FiImage className="h-8 w-8 text-gray-400 absolute" />
           </div>
         );
-      case "VIDEO":
-        return content.thumbnailPath ? (
+      case "video":
+        return previewConfig.hasThumbnail ? (
           <div className="relative pt-[56.25%] w-full overflow-hidden">
-            {" "}
-            {/* Added overflow-hidden */}
-            <AuthenticatedImage
+            <AuthenticatedMedia
               contentId={content.id}
+              type="image"
               alt={content.title}
               isThumb={true}
               className="absolute top-0 left-0 h-full w-full object-cover rounded"
@@ -153,6 +158,12 @@ const ContentCard = ({ content, onEdit }) => {
             </div>
           </div>
         ) : null;
+      case "document":
+        return (
+          <div className="text-sm text-gray-500 line-clamp-2 min-h-[2.5rem]">
+            {previewConfig.preview}
+          </div>
+        );
       default:
         return null;
     }

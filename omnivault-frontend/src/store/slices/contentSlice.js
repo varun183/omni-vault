@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import contentService from "../../services/contentService";
+import { apiCache } from "../../utils/apiCache";
 
 export const getAllContent = createAsyncThunk(
   "content/getAllContent",

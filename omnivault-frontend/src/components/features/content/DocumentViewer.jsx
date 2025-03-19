@@ -2,6 +2,11 @@ import React, { useState, useEffect } from "react";
 import { FiDownload, FiExternalLink } from "react-icons/fi";
 import Button from "../../common/Button";
 import Spinner from "../../common/Spinner";
+import {
+  getDocumentTypeLabel,
+  isTextBasedDocument,
+} from "../../../utils/contentUtils";
+import AuthenticatedMedia from "../../common/AuthenticatedMedia";
 
 /**
  * An enhanced document viewer component with better format support and fallbacks
@@ -19,19 +24,12 @@ const DocumentViewer = ({ contentId, filename, mimeType, contentService }) => {
       // Directly viewable document types
       if (mimeType === "application/pdf") return "pdf";
 
-      // All text-based formats should use the text viewer - expanded list
-      if (
-        mimeType.startsWith("text/") ||
-        mimeType === "application/json" ||
-        mimeType === "application/xml" ||
-        mimeType === "application/javascript" ||
-        mimeType === "application/xhtml+xml"
-      )
-        return "text";
+      // Text-based documents
+      if (isTextBasedDocument(mimeType, filename)) return "text";
 
       if (mimeType === "image/svg+xml") return "iframe";
 
-      // Office documents - we'll fall back to direct download since Google Docs Viewer isn't working
+      // Office documents - fall back to direct download
       const officeDocuments = [
         "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -42,14 +40,6 @@ const DocumentViewer = ({ contentId, filename, mimeType, contentService }) => {
       ];
 
       if (officeDocuments.includes(mimeType)) return "download";
-
-      // Check file extension as a fallback
-      if (filename) {
-        const extension = filename.split(".").pop().toLowerCase();
-        if (["txt", "json", "xml", "md", "csv", "log"].includes(extension)) {
-          return "text";
-        }
-      }
 
       // Default to download for other types
       return "download";
@@ -84,7 +74,7 @@ const DocumentViewer = ({ contentId, filename, mimeType, contentService }) => {
         URL.revokeObjectURL(docUrl);
       }
     };
-  }, [contentId, mimeType, filename, contentService]);
+  }, [contentId, mimeType, filename, contentService, docUrl]);
 
   if (loading) {
     return (
@@ -117,11 +107,12 @@ const DocumentViewer = ({ contentId, filename, mimeType, contentService }) => {
             className="relative w-full border rounded"
             style={{ height: "80vh" }}
           >
-            <iframe
-              src={docUrl}
+            <AuthenticatedMedia
+              contentId={contentId}
+              type="iframe"
               className="absolute top-0 left-0 w-full h-full border-0 rounded"
-              title={filename}
-            ></iframe>
+              alt={filename}
+            />
           </div>
         </div>
       );
@@ -238,17 +229,16 @@ const TextViewer = ({ url, filename, mimeType }) => {
 
   // Determine if this is JSON for special formatting
   let formattedContent = text;
-  let isJson = false;
 
   // Try to detect and format JSON
   if (
-    mimeType === "application/json" ||
-    filename?.toLowerCase().endsWith(".json")
+    isTextBasedDocument(mimeType, filename) &&
+    (mimeType === "application/json" ||
+      filename?.toLowerCase().endsWith(".json"))
   ) {
     try {
       const jsonObj = JSON.parse(text);
       formattedContent = JSON.stringify(jsonObj, null, 2);
-      isJson = true;
     } catch (e) {
       // Not valid JSON, just use the raw text
       console.warn("File appears to be JSON but couldn't be parsed:", e);
@@ -261,73 +251,5 @@ const TextViewer = ({ url, filename, mimeType }) => {
     </div>
   );
 };
-
-// Helper function to get document type label
-function getDocumentTypeLabel(mimeType, filename) {
-  // First try to determine by MIME type
-  if (mimeType) {
-    const mimeTypeMap = {
-      "application/pdf": "PDF Document",
-      "application/msword": "Word Document",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        "Word Document",
-      "application/vnd.ms-excel": "Excel Spreadsheet",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-        "Excel Spreadsheet",
-      "application/vnd.ms-powerpoint": "PowerPoint Presentation",
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-        "PowerPoint Presentation",
-      "application/json": "JSON Document",
-      "application/xml": "XML Document",
-      "text/plain": "Text Document",
-      "text/csv": "CSV Document",
-      "text/markdown": "Markdown Document",
-      "text/html": "HTML Document",
-      "application/zip": "ZIP Archive",
-      "application/x-zip-compressed": "ZIP Archive",
-      "application/x-rar-compressed": "RAR Archive",
-      "application/x-7z-compressed": "7Z Archive",
-    };
-
-    if (mimeType in mimeTypeMap) {
-      return mimeTypeMap[mimeType];
-    }
-
-    if (mimeType.startsWith("text/")) {
-      return "Text Document";
-    }
-  }
-
-  // If we couldn't determine by MIME type, try by file extension
-  if (filename) {
-    const extension = filename.split(".").pop().toLowerCase();
-    const extensionMap = {
-      pdf: "PDF Document",
-      doc: "Word Document",
-      docx: "Word Document",
-      xls: "Excel Spreadsheet",
-      xlsx: "Excel Spreadsheet",
-      ppt: "PowerPoint Presentation",
-      pptx: "PowerPoint Presentation",
-      txt: "Text Document",
-      rtf: "Rich Text Document",
-      json: "JSON Document",
-      xml: "XML Document",
-      md: "Markdown Document",
-      csv: "CSV Document",
-      html: "HTML Document",
-      htm: "HTML Document",
-      zip: "ZIP Archive",
-      rar: "RAR Archive",
-      "7z": "7Z Archive",
-    };
-
-    if (extension in extensionMap) {
-      return extensionMap[extension];
-    }
-  }
-
-  return "Document";
-}
 
 export default DocumentViewer;

@@ -1,5 +1,6 @@
 import axiosInstance from "./axiosInstance";
 import { apiCache } from "../utils/apiCache";
+import fileService from "./fileService";
 
 const contentService = {
   getAllContent: async (page = 0, size = 10) => {
@@ -86,6 +87,12 @@ const contentService = {
     );
     return response.data;
   },
+  getFolderContent: async (folderId, page = 0, size = 10) => {
+    const response = await axiosInstance.get(
+      `/contents/folder/${folderId}?page=${page}&size=${size}`
+    );
+    return response.data;
+  },
 
   uploadFile: async (file, title, description, folderId, tagIds, newTags) => {
     const formData = new FormData();
@@ -142,131 +149,28 @@ const contentService = {
   },
 
   getFileUrl: (contentId) => {
-    const baseUrl = `${axiosInstance.defaults.baseURL}/contents/${contentId}/file`;
-    const token = localStorage.getItem("access_token");
-    // Return URL with auth token for direct browser access (like in iframes)
-    return token ? `${baseUrl}?token=${token}` : baseUrl;
+    return fileService.getFileUrl(contentId);
   },
 
   getThumbnailUrl: (contentId) => {
-    const baseUrl = `${axiosInstance.defaults.baseURL}/contents/${contentId}/thumbnail`;
-    const token = localStorage.getItem("access_token");
-    // Return URL with auth token for direct browser access
-    return token ? `${baseUrl}?token=${token}` : baseUrl;
+    return fileService.getThumbnailUrl(contentId);
   },
 
   fetchBatchThumbnails: async (contentIds) => {
-    if (!contentIds || contentIds.length === 0) return {};
-
-    // Create cache key for this batch
-    const cacheKey = `thumbnails_${contentIds.sort().join("_")}`;
-
-    // Try cache first
-    const cachedResults = apiCache.get(cacheKey);
-    if (cachedResults) return cachedResults;
-
-    // If not in cache, fetch individually
-    const results = {};
-    await Promise.all(
-      contentIds.map(async (id) => {
-        try {
-          // First check if the content item has a thumbnailPath
-          const contentResponse = await axiosInstance.get(`/contents/${id}`);
-          const contentItem = contentResponse.data;
-
-          // Only try to fetch thumbnail if it actually has one
-          if (contentItem.thumbnailPath) {
-            try {
-              const response = await axiosInstance.get(
-                `/contents/${id}/thumbnail`,
-                {
-                  responseType: "blob",
-                }
-              );
-              results[id] = URL.createObjectURL(response.data);
-            } catch (thumbnailError) {
-              console.log(`Thumbnail not available for ${id}`);
-              // Don't store an error in results, just skip this one
-            }
-          } else {
-            console.log(`Content ${id} has no thumbnail path`);
-          }
-        } catch (error) {
-          console.log(
-            `Error fetching content or thumbnail for ${id}:`,
-            error.message
-          );
-        }
-      })
-    );
-
-    // Cache the batch result - shorter TTL for thumbnails
-    apiCache.set(cacheKey, results, 2 * 60 * 1000); // 2 minutes
-    return results;
+    return fileService.fetchBatchThumbnails(contentIds);
   },
 
   // These methods remain the same for programmatic access
   fetchFileWithAuth: async (contentId) => {
-    try {
-      const response = await axiosInstance.get(`/contents/${contentId}/file`, {
-        responseType: "blob",
-      });
-      return URL.createObjectURL(response.data);
-    } catch (error) {
-      console.error("Error fetching file:", error);
-      return null;
-    }
-  },
-
-  // Method to check if a document can be viewed in browser
-  canViewDocumentInBrowser: (mimeType) => {
-    if (!mimeType) return false;
-
-    const viewableTypes = [
-      "application/pdf",
-      "text/plain",
-      "text/html",
-      "text/csv",
-      "text/markdown",
-      "image/svg+xml",
-    ];
-
-    return viewableTypes.includes(mimeType) || mimeType.startsWith("text/");
+    return fileService.fetchFileWithAuth(contentId);
   },
 
   fetchThumbnailWithAuth: async (contentId) => {
-    try {
-      const response = await axiosInstance.get(
-        `/contents/${contentId}/thumbnail`,
-        {
-          responseType: "blob",
-        }
-      );
-      return URL.createObjectURL(response.data);
-    } catch (error) {
-      console.error("Error fetching thumbnail:", error);
-      return null;
-    }
+    return fileService.fetchThumbnailWithAuth(contentId);
   },
 
   downloadFile: async (contentId, filename) => {
-    try {
-      const response = await axiosInstance.get(`/contents/${contentId}/file`, {
-        responseType: "blob",
-      });
-
-      // Create a blob URL and trigger download
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", filename || "download");
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error downloading file:", error);
-    }
+    return fileService.downloadFile(contentId, filename);
   },
 };
 

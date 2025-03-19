@@ -14,7 +14,7 @@ import contentService from "../services/contentService";
 
 const HomePage = () => {
   const dispatch = useDispatch();
-  const { contents, loading, totalElements, totalPages } = useSelector(
+  const { contents, loading, totalPages } = useSelector(
     (state) => state.content
   );
   const [currentPage, setCurrentPage] = useState(0);
