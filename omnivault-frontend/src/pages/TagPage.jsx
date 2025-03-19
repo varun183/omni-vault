@@ -1,9 +1,8 @@
-// src/pages/TagPage.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { FiTag, FiEdit, FiTrash } from "react-icons/fi";
-import { getTag, deleteTag } from "../store/slices/tagSlice";
+import { getTag, deleteTag, updateTag } from "../store/slices/tagSlice";
 import { getContentByTag } from "../store/slices/contentSlice";
 import Layout from "../components/layout/Layout";
 import ContentCard from "../components/features/content/ContentCard";
@@ -23,7 +22,7 @@ const TagPage = () => {
     totalPages,
   } = useSelector((state) => state.content);
   const [currentPage, setCurrentPage] = useState(0);
-  const [selectedContent, setSelectedContent] = useState(null);
+  const [, setSelectedContent] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [tagName, setTagName] = useState("");
   const [tagColor, setTagColor] = useState("#808080");
@@ -85,7 +84,6 @@ const TagPage = () => {
 
   const handleEditContent = (content) => {
     setSelectedContent(content);
-    // Implement content editing logic as needed
   };
 
   if (tagLoading && !currentTag) {

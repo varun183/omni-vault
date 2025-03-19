@@ -10,15 +10,11 @@ import com.personal.omnivault.exception.AccessDeniedException;
 import com.personal.omnivault.exception.BadRequestException;
 import com.personal.omnivault.exception.ResourceNotFoundException;
 import com.personal.omnivault.repository.*;
-import com.personal.omnivault.service.AuthService;
-import com.personal.omnivault.service.ContentService;
-import com.personal.omnivault.service.FolderService;
-import com.personal.omnivault.service.StorageService;
-import com.personal.omnivault.service.TagService;
+import com.personal.omnivault.service.*;
+import com.personal.omnivault.util.ContentTypeUtils;
 import com.personal.omnivault.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FilenameUtils;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.io.Resource;
@@ -30,8 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -46,8 +41,7 @@ public class ContentServiceImpl implements ContentService {
     private final AuthService authService;
     private final FolderService folderService;
     private final TagService tagService;
-    private final StorageService storageService;
-    private final org.apache.tika.Tika tika = new org.apache.tika.Tika();
+    private final FileService fileService;
 
     @Override
     @Transactional(readOnly = true)
@@ -276,74 +270,7 @@ public class ContentServiceImpl implements ContentService {
         return convertToContentDto(savedContent);
     }
 
-    /**
-     * Improves MIME type detection beyond what the browser/client provides
-     * @param file The uploaded file
-     * @param originalFilename The original filename
-     * @return The detected MIME type
-     */
-    private String detectMimeType(MultipartFile file, String originalFilename) {
-        // First, try to use the MIME type provided by the client
-        String mimeType = file.getContentType();
 
-        // If no MIME type is provided or it's the generic "application/octet-stream",
-        // try to detect it based on file extension
-        if (mimeType == null || mimeType.equals("application/octet-stream")) {
-            String extension = FilenameUtils.getExtension(originalFilename).toLowerCase();
-
-            // Map of common extensions to MIME types
-            Map<String, String> mimeTypeMap = new HashMap<>();
-
-            // Text files
-            mimeTypeMap.put("txt", "text/plain");
-            mimeTypeMap.put("log", "text/plain");
-            mimeTypeMap.put("text", "text/plain");
-            mimeTypeMap.put("csv", "text/csv");
-            mimeTypeMap.put("tsv", "text/tab-separated-values");
-            mimeTypeMap.put("md", "text/markdown");
-            mimeTypeMap.put("markdown", "text/markdown");
-            mimeTypeMap.put("json", "application/json");
-            mimeTypeMap.put("xml", "application/xml");
-            mimeTypeMap.put("html", "text/html");
-            mimeTypeMap.put("htm", "text/html");
-            mimeTypeMap.put("css", "text/css");
-            mimeTypeMap.put("js", "application/javascript");
-
-            // Document files
-            mimeTypeMap.put("pdf", "application/pdf");
-            mimeTypeMap.put("doc", "application/msword");
-            mimeTypeMap.put("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-            mimeTypeMap.put("xls", "application/vnd.ms-excel");
-            mimeTypeMap.put("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            mimeTypeMap.put("ppt", "application/vnd.ms-powerpoint");
-            mimeTypeMap.put("pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
-
-            // Use the extension-based MIME type if available
-            if (mimeTypeMap.containsKey(extension)) {
-                mimeType = mimeTypeMap.get(extension);
-            }
-        }
-
-        // If still not determined, try Apache Tika for more accurate detection
-        if (mimeType == null || mimeType.equals("application/octet-stream")) {
-            try {
-                // Create a temporary file to use with Tika
-                File tempFile = File.createTempFile("detect-mime-", "-" + FilenameUtils.getExtension(originalFilename));
-                file.transferTo(tempFile);
-
-                // Use Tika to detect the MIME type
-                mimeType = tika.detect(tempFile);
-
-                // Clean up
-                tempFile.delete();
-            } catch (IOException e) {
-                log.warn("Failed to detect MIME type using Tika: {}", e.getMessage());
-            }
-        }
-
-        // Default to octet-stream if all detection methods fail
-        return mimeType != null ? mimeType : "application/octet-stream";
-    }
 
     @Override
     @Transactional
@@ -363,7 +290,10 @@ public class ContentServiceImpl implements ContentService {
         }
 
         // Determine content type based on file extension
-        ContentType contentType = determineContentType(file.getOriginalFilename());
+        ContentType contentType = ContentTypeUtils.determineContentType(
+                file.getOriginalFilename(),
+                file.getContentType()
+        );
 
         // Create content entity
         Content content = Content.builder()
@@ -388,12 +318,12 @@ public class ContentServiceImpl implements ContentService {
         }
 
         // Store the file
-        String storagePath = storageService.store(file, currentUser.getId(), contentType);
+        String storagePath = fileService.storeFile(file, currentUser.getId(), contentType);
         content.setStoragePath(storagePath);
 
         // Generate thumbnail for images and videos
         if (contentType == ContentType.IMAGE || contentType == ContentType.VIDEO) {
-            String thumbnailPath = storageService.generateThumbnail(storagePath, contentType);
+            String thumbnailPath = fileService.generateThumbnail(storagePath, contentType);
             content.setThumbnailPath(thumbnailPath);
         }
 
@@ -526,7 +456,6 @@ public class ContentServiceImpl implements ContentService {
     @CacheEvict(value = {"contents"}, allEntries = true)
     public ContentDTO updateContentTags(UUID contentId, List<UUID> tagIds, List<String> newTags) {
         Content content = getContentEntity(contentId);
-        User currentUser = authService.getCurrentUser();
 
         // Clear existing tags safely - manually break bidirectional relationship
         Set<Tag> existingTags = new HashSet<>(content.getTags());
@@ -564,12 +493,8 @@ public class ContentServiceImpl implements ContentService {
 
         // Delete file if it's a file-based content
         if (content.getStoragePath() != null) {
-            storageService.delete(content.getStoragePath());
+            fileService.deleteFile(content.getStoragePath());
 
-            // Delete thumbnail if exists
-            if (content.getThumbnailPath() != null) {
-                storageService.delete(content.getThumbnailPath());
-            }
         }
 
         contentRepository.delete(content);
@@ -584,7 +509,7 @@ public class ContentServiceImpl implements ContentService {
             throw new ResourceNotFoundException("File", "contentId", contentId);
         }
 
-        return storageService.loadAsResource(content.getStoragePath());
+        return fileService.loadFileAsResource(content.getStoragePath());
     }
 
     @Override
@@ -595,7 +520,7 @@ public class ContentServiceImpl implements ContentService {
             throw new ResourceNotFoundException("Thumbnail", "contentId", contentId);
         }
 
-        return storageService.loadAsResource(content.getThumbnailPath());
+        return fileService.loadFileAsResource(content.getThumbnailPath());
     }
 
     @Override
@@ -621,46 +546,7 @@ public class ContentServiceImpl implements ContentService {
         });
     }
 
-    // Update the determineContentType method in ContentServiceImpl.java
 
-    private ContentType determineContentType(String filename) {
-        if (filename == null) {
-            return ContentType.OTHER;
-        }
-
-        String extension = FilenameUtils.getExtension(filename).toLowerCase();
-
-        // Image extensions
-        if (Arrays.asList("jpg", "jpeg", "png", "gif", "bmp", "svg", "webp", "tiff", "ico").contains(extension)) {
-            return ContentType.IMAGE;
-        }
-
-        // Video extensions
-        if (Arrays.asList("mp4", "avi", "mov", "wmv", "flv", "mkv", "webm", "m4v", "mpg", "mpeg").contains(extension)) {
-            return ContentType.VIDEO;
-        }
-
-        // Document extensions - expanded list with explicitly listed text formats
-        if (Arrays.asList(
-                // Common document types
-                "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
-                // Text files - explicitly included
-                "txt", "text", "log", "rtf", "csv", "tsv", "md", "markdown", "json", "xml", "html", "htm", "css", "js",
-                // Data formats
-                "yaml", "yml", "toml", "ini", "cfg", "conf",
-                // Code files (which are text-based)
-                "java", "py", "rb", "php", "c", "cpp", "h", "cs", "js", "jsx", "ts", "tsx", "go", "rs", "swift",
-                // Other office formats
-                "odt", "ods", "odp", "odg", "odf",
-                // Archive formats that might contain documents
-                "zip", "rar", "7z", "tar", "gz"
-        ).contains(extension)) {
-            return ContentType.DOCUMENT;
-        }
-
-        // Default to OTHER
-        return ContentType.OTHER;
-    }
 
     private ContentDTO convertToContentDto(Content content) {
         ContentDTO.ContentDTOBuilder builder = ContentDTO.builder()

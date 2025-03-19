@@ -1,4 +1,3 @@
-// src/store/slices/authSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import authService from "../../services/authService";
 
@@ -23,6 +22,7 @@ export const register = createAsyncThunk(
       const data = await authService.register(userData);
       localStorage.setItem("access_token", data.accessToken);
       localStorage.setItem("refresh_token", data.refreshToken);
+      console.log("Registered user", data);
       return data;
     } catch (error) {
       return rejectWithValue(
