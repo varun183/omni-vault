@@ -172,5 +172,7 @@ public class ContentController {
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(contentService.searchContent(query, pageable));
     }
+
+
 }
 
