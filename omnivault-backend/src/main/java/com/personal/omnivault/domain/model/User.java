@@ -83,6 +83,11 @@ public class User {
     @Builder.Default
     private Set<Content> contents = new HashSet<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    @Builder.Default
+    private Set<UserOAuthConnection> oauthConnections = new HashSet<>();
+
     @PrePersist
     protected void onCreate() {
         createdAt = updatedAt = ZonedDateTime.now();
@@ -129,6 +134,16 @@ public class User {
             contents = new HashSet<>();
         }
         return contents;
+    }
+
+
+
+    // Safe getter for oauth connections
+    public Set<UserOAuthConnection> getOauthConnections() {
+        if (oauthConnections == null) {
+            oauthConnections = new HashSet<>();
+        }
+        return oauthConnections;
     }
 
 }

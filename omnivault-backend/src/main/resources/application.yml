@@ -8,9 +8,9 @@ spring:
 
   # Database configuration
   datasource:
-    url: jdbc:postgresql://localhost:5433/omnivault
-    username: postgres
-    password: varun003
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       minimum-idle: 5
@@ -59,7 +59,7 @@ spring:
 
 # Server configuration
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   servlet:
     context-path: /api
   compression:
@@ -71,25 +71,43 @@ server:
 app:
   # JWT Configuration
   jwt:
-    secret:  "KS7bVTgyjY&(d2BKRQPq$Ln6!^nUMGLrE4V3*5%#cW@NF9AaH8zX$C2vB@mPqW3sDf5gH7jK8lM9nPzX1cV2bN3mQ4wE5rT6yU7iO8pP0aS1dF2gH3jK4lZ5xC6vB7nM8qW9eR0tY" # Don't use this in production, set via env variable
+    secret: ${JWT_SECRET:KS7bVTgyjY&(d2BKRQPq$Ln6!^nUMGLrE4V3*5%#cW@NF9AaH8zX$C2vB@mPqW3sDf5gH7jK8lM9nPzX1cV2bN3mQ4wE5rT6yU7iO8pP0aS1dF2gH3jK4lZ5xC6vB7nM8qW9eR0tY}
     accessTokenExpirationMs: 3600000  # 1 hour
-    refreshTokenExpirationMs: 2592000000  # 30 days
+    refreshTokenExpirationMs: 2592000000 # 30 days
+
+  oauth2:
+    providers:
+      google:
+        client-id: ${OAUTH_GOOGLE_CLIENT_ID:your-client-id}
+        client-secret: ${OAUTH_GOOGLE_CLIENT_SECRET:your-client-secret}
+        redirect-uri: ${OAUTH_GOOGLE_REDIRECT_URI:http://localhost:8080/api/auth/oauth2/callback/google}
+        authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+        token-uri: https://oauth2.googleapis.com/token
+        user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+        scopes:
+          - openid
+          - email
+          - profile
+          - https://www.googleapis.com/auth/drive.file
+          - https://www.googleapis.com/auth/drive.appdata
 
   # Storage configuration
   storage:
-    location: ./omnivault-storage
+    location: ${STORAGE_LOCATION:./omnivault-storage}
     # Maximum file size per content type in MB
     max-size:
       image: 10
       video: 100
       document: 50
       other: 25
+    googledrive:
+      enabled: ${GOOGLE_DRIVE_ENABLED:false}
+      root-folder-name: ${GOOGLE_DRIVE_ROOT_FOLDER:omniVault}
+      application-name: ${GOOGLE_DRIVE_APP_NAME:omniVault}
 
   # CORS configuration
   cors:
-    allowed-origins:
-    - http://localhost:5173
-    - http://localhost:3000
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
     allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
     max-age: 3600
 
