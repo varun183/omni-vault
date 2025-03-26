@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -52,5 +54,29 @@ public class AuthController {
                 .createdAt(user.getCreatedAt())
                 .build();
         return ResponseEntity.ok(userDto);
+    }
+
+    @PostMapping("/verify/token")
+    public ResponseEntity<Map<String, Boolean>> verifyEmail(@RequestParam String token) {
+        boolean verified = authService.verifyEmail(token);
+        Map<String, Boolean> response = Map.of("verified", verified);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/verify/otp")
+    public ResponseEntity<Map<String, Boolean>> verifyEmailWithOTP(
+            @RequestParam String email,
+            @RequestParam String otpCode) {
+        boolean verified = authService.verifyEmailWithOTP(email, otpCode);
+        Map<String, Boolean> response = Map.of("verified", verified);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<Map<String, Boolean>> resendVerificationEmail(
+            @RequestParam String email) {
+        boolean sent = authService.resendVerificationEmail(email);
+        Map<String, Boolean> response = Map.of("sent", sent);
+        return ResponseEntity.ok(response);
     }
 }
