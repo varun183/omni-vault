@@ -1,12 +1,15 @@
 package com.personal.omnivault.controller;
 
+import com.personal.omnivault.config.RateLimiter;
 import com.personal.omnivault.domain.dto.request.LoginRequest;
 import com.personal.omnivault.domain.dto.request.RegisterRequest;
 import com.personal.omnivault.domain.dto.request.TokenRefreshRequest;
 import com.personal.omnivault.domain.dto.response.AuthResponse;
 import com.personal.omnivault.domain.dto.response.UserDTO;
 import com.personal.omnivault.domain.model.User;
+import com.personal.omnivault.exception.BadRequestException;
 import com.personal.omnivault.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +23,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final RateLimiter rateLimiter;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -74,7 +78,14 @@ public class AuthController {
 
     @PostMapping("/resend-verification")
     public ResponseEntity<Map<String, Boolean>> resendVerificationEmail(
-            @RequestParam String email) {
+            @RequestParam String email,
+            HttpServletRequest request) {
+
+        // Check rate limit - 5 requests per hour
+        if (!rateLimiter.allowRequest(request, 5)) {
+            throw new BadRequestException("Too many verification requests. Please try again later.");
+        }
+
         boolean sent = authService.resendVerificationEmail(email);
         Map<String, Boolean> response = Map.of("sent", sent);
         return ResponseEntity.ok(response);
