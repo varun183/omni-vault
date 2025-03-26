@@ -57,11 +57,55 @@ export const getCurrentUser = createAsyncThunk(
   }
 );
 
+export const verifyEmail = createAsyncThunk(
+  "auth/verifyEmail",
+  async (token, { rejectWithValue }) => {
+    try {
+      const response = await authService.verifyEmail(token);
+      return response;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Verification failed"
+      );
+    }
+  }
+);
+
+export const verifyEmailWithOTP = createAsyncThunk(
+  "auth/verifyEmailWithOTP",
+  async ({ email, otpCode }, { rejectWithValue }) => {
+    try {
+      const response = await authService.verifyEmailWithOTP(email, otpCode);
+      return response;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "OTP verification failed"
+      );
+    }
+  }
+);
+
+export const resendVerificationEmail = createAsyncThunk(
+  "auth/resendVerificationEmail",
+  async (email, { rejectWithValue }) => {
+    try {
+      const response = await authService.resendVerificationEmail(email);
+      return response;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to resend verification email"
+      );
+    }
+  }
+);
+
 const initialState = {
   user: null,
   isAuthenticated: !!localStorage.getItem("access_token"),
   loading: false,
   error: null,
+  verificationSuccess: false,
+  verificationEmail: null,
 };
 
 const authSlice = createSlice({
@@ -70,6 +114,13 @@ const authSlice = createSlice({
   reducers: {
     clearError: (state) => {
       state.error = null;
+    },
+    setVerificationEmail: (state, action) => {
+      state.verificationEmail = action.payload;
+    },
+    clearVerificationState: (state) => {
+      state.verificationSuccess = false;
+      state.verificationEmail = null;
     },
   },
   extraReducers: (builder) => {
@@ -96,8 +147,9 @@ const authSlice = createSlice({
       })
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = true;
         state.user = action.payload.user;
+        state.verificationEmail = action.payload.user.email;
+        // Note: not authenticating as the user is not verified yet
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
@@ -123,9 +175,51 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         state.isAuthenticated = false;
+      })
+
+      // Verify Email Token
+      .addCase(verifyEmail.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(verifyEmail.fulfilled, (state) => {
+        state.loading = false;
+        state.verificationSuccess = true;
+      })
+      .addCase(verifyEmail.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Verify Email with OTP
+      .addCase(verifyEmailWithOTP.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(verifyEmailWithOTP.fulfilled, (state) => {
+        state.loading = false;
+        state.verificationSuccess = true;
+      })
+      .addCase(verifyEmailWithOTP.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Resend Verification Email
+      .addCase(resendVerificationEmail.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(resendVerificationEmail.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(resendVerificationEmail.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
 
-export const { clearError } = authSlice.actions;
+export const { clearError, setVerificationEmail, clearVerificationState } =
+  authSlice.actions;
 export default authSlice.reducer;
