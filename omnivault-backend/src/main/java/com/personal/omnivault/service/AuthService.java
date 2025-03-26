@@ -45,4 +45,29 @@ public interface AuthService {
      * @return The authenticated user
      */
     User getCurrentUser();
+
+    /**
+     * Verify email using token
+     *
+     * @param token The verification token
+     * @return True if verification successful
+     */
+    boolean verifyEmail(String token);
+
+    /**
+     * Verify email using OTP code
+     *
+     * @param email The user's email
+     * @param otpCode The OTP code
+     * @return True if verification successful
+     */
+    boolean verifyEmailWithOTP(String email, String otpCode);
+
+    /**
+     * Resend verification email
+     *
+     * @param email The user's email
+     * @return True if email sent successfully
+     */
+    boolean resendVerificationEmail(String email);
 }

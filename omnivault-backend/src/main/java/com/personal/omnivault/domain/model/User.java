@@ -63,6 +63,12 @@ public class User {
     @Column(name = "version")
     private Long version = 0L;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = false;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonIgnore
     @Builder.Default

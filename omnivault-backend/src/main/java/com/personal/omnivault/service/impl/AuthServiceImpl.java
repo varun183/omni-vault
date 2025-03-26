@@ -8,13 +8,17 @@ import com.personal.omnivault.domain.dto.response.AuthResponse;
 import com.personal.omnivault.domain.dto.response.UserDTO;
 import com.personal.omnivault.domain.model.RefreshToken;
 import com.personal.omnivault.domain.model.User;
+import com.personal.omnivault.domain.model.VerificationToken;
 import com.personal.omnivault.exception.AuthenticationException;
 import com.personal.omnivault.exception.BadRequestException;
+import com.personal.omnivault.exception.ResourceNotFoundException;
 import com.personal.omnivault.repository.RefreshTokenRepository;
 import com.personal.omnivault.repository.UserRepository;
+import com.personal.omnivault.repository.VerificationTokenRepository;
 import com.personal.omnivault.security.TokenProvider;
 import com.personal.omnivault.security.UserPrincipal;
 import com.personal.omnivault.service.AuthService;
+import com.personal.omnivault.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.Random;
 import java.util.UUID;
 
 @Service("authService")
@@ -40,40 +45,136 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
     private final JwtProperties jwtProperties;
+    private final EmailService emailService;
+    private final VerificationTokenRepository verificationTokenRepository;
 
     @Override
     @Transactional
-    public AuthResponse register(RegisterRequest registerRequest) {
+    public AuthResponse register(RegisterRequest request) {
         // Check if username is already taken
-        if (userRepository.existsByUsername(registerRequest.getUsername())) {
+        if (userRepository.existsByUsername(request.getUsername())) {
             throw new BadRequestException("Username is already taken");
         }
 
         // Check if email is already in use
-        if (userRepository.existsByEmail(registerRequest.getEmail())) {
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new BadRequestException("Email is already in use");
         }
 
-        // Create new user
+        // Create new user - note: we set enabled to false until email verification
         User user = User.builder()
-                .username(registerRequest.getUsername())
-                .email(registerRequest.getEmail())
-                .password(passwordEncoder.encode(registerRequest.getPassword()))
-                .firstName(registerRequest.getFirstName())
-                .lastName(registerRequest.getLastName())
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .emailVerified(false)
+                .enabled(false)
                 .build();
 
         User savedUser = userRepository.save(user);
         log.info("Created new user with username: {}", savedUser.getUsername());
 
-        // Create UserPrincipal
-        UserPrincipal userPrincipal = UserPrincipal.create(savedUser);
+        // Generate verification token and OTP
+        String token = UUID.randomUUID().toString();
+        String otpCode = generateOTP(6); // 6-digit OTP
 
-        // Generate tokens
-        String accessToken = tokenProvider.generateAccessToken(userPrincipal);
-        RefreshToken refreshToken = createRefreshToken(savedUser);
+        // Create verification token with expiry
+        int tokenExpiryMinutes = 1440; // 24 hours
+        ZonedDateTime expiryDate = ZonedDateTime.now().plusMinutes(tokenExpiryMinutes);
 
-        return buildAuthResponse(accessToken, refreshToken.getToken(), savedUser);
+        VerificationToken verificationToken = VerificationToken.builder()
+                .token(token)
+                .otpCode(otpCode)
+                .user(savedUser)
+                .expiryDate(expiryDate)
+                .build();
+
+        verificationTokenRepository.save(verificationToken);
+
+        // Send verification email
+        emailService.sendVerificationEmail(savedUser, token, otpCode);
+
+        // Return limited auth response (no tokens yet since not verified)
+        return AuthResponse.builder()
+                .user(convertToUserDto(savedUser))
+                .tokenType("Bearer")
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public boolean verifyEmail(String token) {
+        VerificationToken verificationToken = verificationTokenRepository.findByToken(token)
+                .orElseThrow(() -> new ResourceNotFoundException("Verification Token", "token", token));
+
+        if (verificationToken.isExpired()) {
+            verificationTokenRepository.delete(verificationToken);
+            throw new BadRequestException("Verification token has expired");
+        }
+
+        User user = verificationToken.getUser();
+        user.setEmailVerified(true);
+        user.setEnabled(true);
+        userRepository.save(user);
+
+        // Delete the used token
+        verificationTokenRepository.delete(verificationToken);
+
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean verifyEmailWithOTP(String email, String otpCode) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+
+        VerificationToken verificationToken = verificationTokenRepository.findByUserAndOtpCodeIsNotNull(user)
+                .orElseThrow(() -> new ResourceNotFoundException("Verification Token", "user", user.getId()));
+
+        if (!verificationToken.getOtpCode().equals(otpCode)) {
+            throw new BadRequestException("Invalid OTP code");
+        }
+
+        if (verificationToken.isExpired()) {
+            verificationTokenRepository.delete(verificationToken);
+            throw new BadRequestException("OTP code has expired");
+        }
+
+        user.setEmailVerified(true);
+        user.setEnabled(true);
+        userRepository.save(user);
+
+        // Delete the used token
+        verificationTokenRepository.delete(verificationToken);
+
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean resendVerificationEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+
+        if (user.isEmailVerified()) {
+            throw new BadRequestException("Email is already verified");
+        }
+
+        // Create new token and send email
+        emailService.resendVerificationEmail(user);
+
+        return true;
+    }
+
+    private String generateOTP(int length) {
+        StringBuilder otp = new StringBuilder();
+        Random random = new Random();
+        for (int i = 0; i < length; i++) {
+            otp.append(random.nextInt(10));
+        }
+        return otp.toString();
     }
 
     @Override
@@ -180,6 +281,10 @@ public class AuthServiceImpl implements AuthService {
                 .user(convertToUserDto(user))
                 .build();
     }
+
+
+
+
 
     private UserDTO convertToUserDto(User user) {
         return UserDTO.builder()
