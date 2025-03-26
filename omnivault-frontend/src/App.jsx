@@ -19,6 +19,7 @@ import FavoritesPage from "./pages/FavoritesPage";
 import RecentPage from "./pages/RecentPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import TagsPage from "./pages/TagsPage";
+import EmailVerificationPage from "./pages/EmailVerificationPage";
 
 const App = () => {
   const dispatch = useDispatch();
@@ -51,6 +52,7 @@ const App = () => {
         <Route path="/search" element={<SearchPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
         <Route path="/recent" element={<RecentPage />} />
+        <Route path="/verify-email" element={<EmailVerificationPage />} />
 
         <Route path="*" element={<NotFoundPage />} />
         {/* {import.meta.env.DEV && <ReduxTester />} */}

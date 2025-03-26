@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
-import { register, clearError } from "../store/slices/authSlice";
+import {
+  register,
+  clearError,
+  setVerificationEmail,
+} from "../store/slices/authSlice";
 import AuthLayout from "../components/layout/AuthLayout";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
@@ -27,6 +31,7 @@ const RegisterSchema = Yup.object().shape({
 
 const RegisterPage = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.auth);
   const [showError, setShowError] = useState(false);
 
@@ -66,7 +71,17 @@ const RegisterPage = () => {
         }}
         validationSchema={RegisterSchema}
         onSubmit={(values) => {
-          dispatch(register(values));
+          dispatch(register(values))
+            .unwrap()
+            .then(() => {
+              // Store the email for verification process
+              dispatch(setVerificationEmail(values.email));
+              // Redirect to verification page
+              navigate("/verify-email");
+            })
+            .catch((error) => {
+              console.error("Registration failed:", error);
+            });
         }}
       >
         {({ values, errors, touched, handleChange, handleBlur }) => (

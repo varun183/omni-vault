@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { login, clearError } from "../store/slices/authSlice";
@@ -19,12 +19,20 @@ const LoginPage = () => {
   const dispatch = useDispatch();
   const { loading, error } = useSelector((state) => state.auth);
   const [showError, setShowError] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [showVerifiedMessage, setShowVerifiedMessage] = useState(false);
 
   useEffect(() => {
     if (error) {
       setShowError(true);
     }
   }, [error]);
+
+  useEffect(() => {
+    if (searchParams.get("verified") === "true") {
+      setShowVerifiedMessage(true);
+    }
+  }, [searchParams]);
 
   const handleCloseError = () => {
     setShowError(false);
@@ -36,6 +44,15 @@ const LoginPage = () => {
       <h2 className="text-2xl font-bold text-center mb-6">
         Sign in to your account
       </h2>
+
+      {showVerifiedMessage && (
+        <Alert
+          type="success"
+          message="Your email has been verified! You can now log in."
+          className="mb-4"
+          onClose={() => setShowVerifiedMessage(false)}
+        />
+      )}
 
       {showError && (
         <Alert
