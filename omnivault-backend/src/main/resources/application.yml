@@ -57,16 +57,7 @@ spring:
     caffeine:
       spec: maximumSize=500,expireAfterAccess=600s
 
-  #mail configuration
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+
 
 # Server configuration
 server:
@@ -82,7 +73,7 @@ server:
 app:
   # JWT Configuration
   jwt:
-    secret:  "KS7bVTgyjY&(d2BKRQPq$Ln6!^nUMGLrE4V3*5%#cW@NF9AaH8zX$C2vB@mPqW3sDf5gH7jK8lM9nPzX1cV2bN3mQ4wE5rT6yU7iO8pP0aS1dF2gH3jK4lZ5xC6vB7nM8qW9eR0tY" # Don't use this in production, set via env variable
+    secret:  "KS7bVTgyjY&(d2BKRQPq$Ln6!^nUMGLrE4V3*5%#cW@NF9AaH8zX$C2vB@mPqW3sDf5gH7jK8lM9nPzX1cV2bN3mQ4wE5rT6yU7iO8pP0aS1dF2gH3jK4lZ5xC6vB7nM8qW9eR0tY"
     accessTokenExpirationMs: 3600000  # 1 hour
     refreshTokenExpirationMs: 2592000000  # 30 days
 
@@ -99,19 +90,28 @@ app:
   # CORS configuration
   cors:
     allowed-origins:
-    - http://localhost:5173
-    - http://localhost:3000
+      - http://localhost:5173
+      - http://localhost:3000
     allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
     max-age: 3600
 
-  #mail configuration
+  # Email configuration
   email:
-    from: noreply@omnivault.example.com
+    from: noreply@omnivault.dev
     verification:
       base-url: http://localhost:5173/verify
-      token-expiry: 60  # 24 hours in minutes
+      token-expiry: 1440  # 24 hours in minutes
       otp-expiry: 10      # 10 minutes
       otp-length: 6
+
+  # AWS Configuration
+aws:
+   ses:
+     enabled: ${AWS_SES_ENABLED:false}
+     access-key: ${AWS_ACCESS_KEY}
+     secret-key: ${AWS_SECRET_KEY}
+     region: ${AWS_REGION}
+     source: ${AWS_SES_SOURCE}
 
 # Logging configuration
 logging:

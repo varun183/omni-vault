@@ -152,6 +152,13 @@
 			<version>2.0.3</version>
 		</dependency>
 
+		<!-- https://mvnrepository.com/artifact/software.amazon.awssdk/ses -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>ses</artifactId>
+			<version>2.31.10</version>
+		</dependency>
+
 
 
 		<!-- Test dependencies -->
