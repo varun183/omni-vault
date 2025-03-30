@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { FiMenu, FiX, FiUser, FiLogOut, FiSearch } from "react-icons/fi";
 import { logout } from "../../store/slices/authSlice";
 import { searchContent } from "../../store/slices/contentSlice";
+import { apiCache } from "../../utils/apiCache";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -12,10 +13,22 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
 
-  const handleLogout = () => {
-    dispatch(logout()).then(() => {
-      navigate("/login");
-    });
+  const handleLogout = async () => {
+    try {
+      // First clear all cache data
+      apiCache.clearAll();
+
+      // Dispatch logout action and wait for it to complete
+      await dispatch(logout()).unwrap();
+
+      // Close any open menus
+      setIsMenuOpen(false);
+
+      // Navigate to login page after logout completes
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   const handleSearch = (e) => {

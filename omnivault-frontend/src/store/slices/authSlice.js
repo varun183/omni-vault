@@ -1,10 +1,13 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import authService from "../../services/authService";
+import { apiCache } from "../../utils/apiCache";
 
 export const login = createAsyncThunk(
   "auth/login",
   async ({ usernameOrEmail, password }, { rejectWithValue }) => {
     try {
+      apiCache.clear();
+
       const data = await authService.login(usernameOrEmail, password);
       localStorage.setItem("access_token", data.accessToken);
       localStorage.setItem("refresh_token", data.refreshToken);
@@ -19,6 +22,8 @@ export const register = createAsyncThunk(
   "auth/register",
   async (userData, { rejectWithValue }) => {
     try {
+      apiCache.clear();
+
       const data = await authService.register(userData);
       localStorage.setItem("access_token", data.accessToken);
       localStorage.setItem("refresh_token", data.refreshToken);
@@ -37,6 +42,9 @@ export const logout = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       await authService.logout();
+
+      apiCache.clear();
+
       return null;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Logout failed");

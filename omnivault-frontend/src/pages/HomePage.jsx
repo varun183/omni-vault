@@ -14,9 +14,9 @@ import contentService from "../services/contentService";
 
 const HomePage = () => {
   const dispatch = useDispatch();
-  const { contents, loading, totalPages } = useSelector(
-    (state) => state.content
-  );
+  const contentState = useSelector((state) => state.content) || {};
+  const { contents = [], loading = false, totalPages = 0 } = contentState;
+
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedContent, setSelectedContent] = useState(null);
   const [isTextFormOpen, setIsTextFormOpen] = useState(false);
@@ -25,21 +25,25 @@ const HomePage = () => {
 
   useEffect(() => {
     const loadContents = async () => {
-      // First load the content list, which is already paginated
-      const action = await dispatch(
-        getAllContent({ page: currentPage, size: 12 })
-      ).unwrap();
+      try {
+        // First load the content list, which is already paginated
+        const action = await dispatch(
+          getAllContent({ page: currentPage, size: 12 })
+        ).unwrap();
 
-      // If we have contents, preload thumbnails in batch
-      if (action?.content?.length > 0) {
-        const contentIds = action.content
-          .filter((content) => content.thumbnailPath) // Only include items with thumbnails
-          .map((content) => content.id);
+        // If we have contents, preload thumbnails in batch
+        if (action?.content?.length > 0) {
+          const contentIds = action.content
+            .filter((content) => content.thumbnailPath) // Only include items with thumbnails
+            .map((content) => content.id);
 
-        if (contentIds.length > 0) {
-          // This will cache the thumbnails
-          await contentService.fetchBatchThumbnails(contentIds);
+          if (contentIds.length > 0) {
+            // This will cache the thumbnails
+            await contentService.fetchBatchThumbnails(contentIds);
+          }
         }
+      } catch (error) {
+        console.error("Error loading content:", error);
       }
     };
 
@@ -92,11 +96,11 @@ const HomePage = () => {
         </div>
       </div>
 
-      {loading && contents.length === 0 ? (
+      {loading && (!contents || contents.length === 0) ? (
         <div className="flex justify-center py-12">
           <Spinner size="lg" />
         </div>
-      ) : contents.length === 0 ? (
+      ) : !contents || contents.length === 0 ? (
         <div className="text-center py-12">
           <h3 className="text-lg font-medium text-gray-900">
             No content found

@@ -9,6 +9,7 @@ import Input from "../components/common/Input";
 import Button from "../components/common/Button";
 import Alert from "../components/common/Alert";
 import Spinner from "../components/common/Spinner";
+import { apiCache } from "../utils/apiCache";
 
 const LoginSchema = Yup.object().shape({
   usernameOrEmail: Yup.string().required("Username or email is required"),
@@ -21,6 +22,10 @@ const LoginPage = () => {
   const [showError, setShowError] = useState(false);
   const [searchParams] = useSearchParams();
   const [showVerifiedMessage, setShowVerifiedMessage] = useState(false);
+
+  useEffect(() => {
+    apiCache.clearAll(); // Clear ALL cache, regardless of user
+  }, []);
 
   useEffect(() => {
     if (error) {
@@ -37,6 +42,11 @@ const LoginPage = () => {
   const handleCloseError = () => {
     setShowError(false);
     dispatch(clearError());
+  };
+
+  const handleSubmit = (values) => {
+    apiCache.clearAll();
+    dispatch(login(values));
   };
 
   return (
@@ -66,9 +76,7 @@ const LoginPage = () => {
       <Formik
         initialValues={{ usernameOrEmail: "", password: "" }}
         validationSchema={LoginSchema}
-        onSubmit={(values) => {
-          dispatch(login(values));
-        }}
+        onSubmit={handleSubmit}
       >
         {({ values, errors, touched, handleChange, handleBlur }) => (
           <Form>

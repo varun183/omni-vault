@@ -1,11 +1,22 @@
-import React from "react";
-import { useSelector } from "react-redux";
-import { Navigate } from "react-router-dom";
+import React, { useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { Navigate, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import { clearCurrentContent } from "../../store/slices/contentSlice";
+import { clearCurrentFolder } from "../../store/slices/folderSlice";
 
 const Layout = ({ children }) => {
   const { isAuthenticated, loading } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+  const location = useLocation();
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearCurrentContent());
+      dispatch(clearCurrentFolder());
+    };
+  }, [location.pathname, dispatch]);
 
   if (!isAuthenticated && !loading) {
     return <Navigate to="/login" />;
