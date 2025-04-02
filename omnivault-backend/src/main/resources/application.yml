@@ -112,6 +112,14 @@ aws:
      secret-key: ${AWS_SECRET_KEY}
      region: ${AWS_REGION}
      source: ${AWS_SES_SOURCE}
+   s3:
+     enabled: ${AWS_S3_ENABLED:false}
+     access-key: ${AWS_ACCESS_KEY}
+     secret-key: ${AWS_SECRET_KEY}
+     region: ${AWS_REGION}
+     bucket-name: ${AWS_S3_BUCKET}
+     url-expiration-seconds: 3600
+     max-size-bytes: 104857600
 
 # Logging configuration
 logging:

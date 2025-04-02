@@ -57,11 +57,19 @@ public class Content {
     @Column(name = "storage_path")
     private String storagePath;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "storage_location", nullable = false)
+    private StorageLocation storageLocation = StorageLocation.LOCAL;
+
     @Column(name = "original_filename")
     private String originalFilename;
 
     @Column(name = "thumbnail_path")
     private String thumbnailPath;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "thumbnail_storage_location")
+    private StorageLocation thumbnailStorageLocation = StorageLocation.LOCAL;
 
     @Column(name = "is_favorite")
     private boolean favorite;
@@ -97,6 +105,13 @@ public class Content {
         createdAt = updatedAt = ZonedDateTime.now();
         if (viewCount == null) {
             viewCount = 0;
+        }
+        // Set default storage location if not specified
+        if (storageLocation == null) {
+            storageLocation = StorageLocation.LOCAL;
+        }
+        if (thumbnailStorageLocation == null && thumbnailPath != null) {
+            thumbnailStorageLocation = StorageLocation.LOCAL;
         }
     }
 
