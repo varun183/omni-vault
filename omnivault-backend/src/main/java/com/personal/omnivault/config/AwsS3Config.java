@@ -1,6 +1,7 @@
 package com.personal.omnivault.config;
 
 import lombok.Data;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +25,7 @@ public class AwsS3Config {
     private long urlExpirationSeconds;
 
     @Bean
+    @ConditionalOnProperty(name = "aws.s3.enabled", havingValue = "true")
     public S3Client s3Client() {
         if (!enabled) {
             return null;

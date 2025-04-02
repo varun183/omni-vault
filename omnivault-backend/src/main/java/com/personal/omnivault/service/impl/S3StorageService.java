@@ -6,6 +6,7 @@ import com.personal.omnivault.exception.FileStorageException;
 import com.personal.omnivault.service.CloudStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@ConditionalOnProperty(name = "aws.s3.enabled", havingValue = "true")
 public class S3StorageService implements CloudStorageService {
 
     private final AwsS3Config s3Config;
