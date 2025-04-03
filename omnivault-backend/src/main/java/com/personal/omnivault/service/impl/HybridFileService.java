@@ -7,11 +7,16 @@ import com.personal.omnivault.service.CloudStorageService;
 import com.personal.omnivault.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FilenameUtils;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.UUID;
 
@@ -63,21 +68,76 @@ public class HybridFileService implements FileService {
     }
 
     public String generateThumbnail(String storagePath, ContentType contentType, StorageLocation storageLocation) {
-        // For now, we'll generate thumbnails in the same storage location as the original file
-        // This could be enhanced to allow different storage locations for thumbnails
+        // For cloud storage, we need to download, process, and re-upload
         if (storageLocation == StorageLocation.CLOUD) {
-            // If cloud storage is not enabled, fall back to local
-            if (!cloudStorageService.isEnabled()) {
-                log.warn("Cloud storage requested for thumbnail but not enabled, cannot generate thumbnail");
+            try {
+                // Download the file from cloud
+                Resource resource = cloudStorageService.loadFileAsResource(storagePath);
+
+                // Create a temp file
+                File tempFile = File.createTempFile("cloud_", "_temp");
+                try (FileOutputStream fos = new FileOutputStream(tempFile);
+                     InputStream is = resource.getInputStream()) {
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+                    while ((bytesRead = is.read(buffer)) != -1) {
+                        fos.write(buffer, 0, bytesRead);
+                    }
+                }
+
+                // Generate thumbnail locally (using a modified version that accepts a file)
+                String tempThumbnailPath = localFileService.generateThumbnailFromFile(
+                        tempFile,
+                        contentType,
+                        FilenameUtils.getName(storagePath));
+
+                if (tempThumbnailPath == null) {
+                    tempFile.delete();
+                    return null;
+                }
+
+                // Upload thumbnail to cloud
+                File thumbnailFile = localFileService.getPath(tempThumbnailPath).toFile();
+                MultipartFile multipartFile = new CustomMultipartFile(
+                        new FileInputStream(thumbnailFile),
+                        thumbnailFile.length(),
+                        "thumbnail_" + FilenameUtils.getName(storagePath));
+
+                // Create path for cloud thumbnail
+                String cloudThumbnailPath = cloudStorageService.storeFile(
+                        multipartFile,
+                        extractUserId(storagePath),
+                        contentType,
+                        "thumbnail_" + FilenameUtils.getName(storagePath));
+
+                // Clean up temp files
+                tempFile.delete();
+                if (!tempThumbnailPath.equals(thumbnailFile.getPath())) {
+                    thumbnailFile.delete();
+                }
+
+                return cloudThumbnailPath;
+            } catch (Exception e) {
+                log.error("Failed to generate cloud thumbnail", e);
                 return null;
             }
-
-            // For simplicity, not implementing cloud thumbnail generation yet
-            log.warn("Cloud thumbnail generation not fully implemented");
-            return null;
         } else {
             return localFileService.generateThumbnail(storagePath, contentType);
         }
+    }
+
+    // Helper method to extract user ID from storage path
+    private UUID extractUserId(String storagePath) {
+        // Path format is typically: contentType/userId/filename
+        String[] parts = storagePath.split("/");
+        if (parts.length >= 2) {
+            try {
+                return UUID.fromString(parts[1]);
+            } catch (IllegalArgumentException e) {
+                log.warn("Could not extract user ID from path: {}", storagePath);
+            }
+        }
+        return null;
     }
 
     @Override

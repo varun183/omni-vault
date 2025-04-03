@@ -141,15 +141,17 @@ public class FileServiceImpl implements FileService {
      * @return The path to the generated thumbnail
      */
     public String generateThumbnail(String storagePath, ContentType contentType) {
-        if (contentType != ContentType.IMAGE && contentType != ContentType.VIDEO) {
-            return null;
-        }
+        Path sourcePath = getPath(storagePath);
+        File sourceFile = sourcePath.toFile();
+        String filename = sourcePath.getFileName().toString();
 
+        return generateThumbnailFromFile(sourceFile, contentType, filename);
+    }
+
+    public String generateThumbnailFromFile(File sourceFile, ContentType contentType, String filename) {
         try {
-            Path sourcePath = getPath(storagePath);
-
             // Generate thumbnail filename
-            String thumbnailPath = getThumbnailPath(storagePath);
+            String thumbnailPath = getThumbnailPath(filename);
             Path targetPath = getPath(thumbnailPath);
 
             // Create parent directories if they don't exist
@@ -157,9 +159,9 @@ public class FileServiceImpl implements FileService {
 
             // For now, we'll only handle image thumbnails - video would require additional libraries
             if (contentType == ContentType.IMAGE) {
-                BufferedImage originalImage = ImageIO.read(sourcePath.toFile());
+                BufferedImage originalImage = ImageIO.read(sourceFile);
                 if (originalImage == null) {
-                    log.warn("Could not read image file: {}", sourcePath);
+                    log.warn("Could not read image file: {}", sourceFile);
                     return null;
                 }
 
@@ -187,19 +189,20 @@ public class FileServiceImpl implements FileService {
                 thumbnail.getGraphics().drawImage(scaledImage, 0, 0, null);
 
                 // Save thumbnail
-                String extension = FilenameUtils.getExtension(sourcePath.getFileName().toString()).toLowerCase();
+                String extension = FilenameUtils.getExtension(filename).toLowerCase();
                 ImageIO.write(thumbnail, extension, targetPath.toFile());
 
-                log.info("Generated thumbnail for {} at {}", sourcePath, targetPath);
+                log.info("Generated thumbnail for {} at {}", sourceFile, targetPath);
                 return thumbnailPath;
             }
 
             return null;
         } catch (IOException e) {
-            log.error("Failed to generate thumbnail for {}", storagePath, e);
+            log.error("Failed to generate thumbnail for {}", sourceFile, e);
             return null;
         }
     }
+
 
     /**
      * Load a file as a Resource

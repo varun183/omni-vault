@@ -6,12 +6,14 @@ import com.personal.omnivault.domain.dto.request.TextContentCreateRequest;
 import com.personal.omnivault.domain.dto.response.ContentDTO;
 import com.personal.omnivault.domain.model.Content;
 import com.personal.omnivault.domain.model.ContentType;
+import com.personal.omnivault.domain.model.StorageLocation;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public interface ContentService {
@@ -114,6 +116,7 @@ public interface ContentService {
      * @param description The content description
      * @param folderId The folder ID
      * @param tagIds List of tag IDs
+     * @param newTags List of new tag names
      * @return The created content DTO
      */
     ContentDTO createFileContent(
@@ -124,6 +127,29 @@ public interface ContentService {
             List<UUID> tagIds,
             List<String> newTags
     );
+
+    /**
+     * Create file content with specified storage location
+     *
+     * @param file The file to upload
+     * @param title The content title
+     * @param description The content description
+     * @param folderId The folder ID
+     * @param tagIds List of tag IDs
+     * @param newTags List of new tag names
+     * @param storageLocation The storage location (LOCAL or CLOUD)
+     * @return The created content DTO
+     */
+    ContentDTO createFileContent(
+            MultipartFile file,
+            String title,
+            String description,
+            UUID folderId,
+            List<UUID> tagIds,
+            List<String> newTags,
+            StorageLocation storageLocation
+    );
+
 
     /**
      * Update content
@@ -176,6 +202,22 @@ public interface ContentService {
     Resource getContentThumbnail(UUID contentId);
 
     /**
+     * Get a presigned URL for content in cloud storage
+     *
+     * @param contentId The content ID
+     * @return The presigned URL
+     */
+    String getContentPresignedUrl(UUID contentId);
+
+    /**
+     * Get a presigned URL for a thumbnail in cloud storage
+     *
+     * @param contentId The content ID
+     * @return The presigned URL
+     */
+    String getThumbnailPresignedUrl(UUID contentId);
+
+    /**
      * Search content
      *
      * @param searchTerm The search term
@@ -190,4 +232,21 @@ public interface ContentService {
      * @param contentId The content ID
      */
     void incrementViewCount(UUID contentId);
+
+    /**
+     * Move content from one storage location to another
+     *
+     * @param contentId The content ID
+     * @param targetStorageLocation The target storage location
+     * @return The updated content DTO
+     */
+    ContentDTO moveContentStorage(UUID contentId, StorageLocation targetStorageLocation);
+
+    /**
+     * Generate pre-signed URLs in batch for multiple content items
+     *
+     * @param contents List of content items
+     * @return Map of content IDs to presigned URLs
+     */
+    Map<UUID, String> generateBatchPresignedUrls(List<Content> contents);
 }

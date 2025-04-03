@@ -6,7 +6,6 @@ import com.personal.omnivault.domain.dto.request.TextContentCreateRequest;
 import com.personal.omnivault.domain.dto.response.ContentDTO;
 import com.personal.omnivault.domain.dto.response.TagDTO;
 import com.personal.omnivault.domain.model.*;
-import com.personal.omnivault.exception.AccessDeniedException;
 import com.personal.omnivault.exception.BadRequestException;
 import com.personal.omnivault.exception.ResourceNotFoundException;
 import com.personal.omnivault.repository.*;
@@ -26,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,33 +40,45 @@ public class ContentServiceImpl implements ContentService {
     private final AuthService authService;
     private final FolderService folderService;
     private final TagService tagService;
-    private final FileService fileService;
+    private final HybridFileService fileService;
+    private final ContentEntityService contentEntityService; // New dependency for entity operations
 
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "contents", key = "'content_' +@authService.getCurrentUser().getId() + '_' + #contentId")
     public ContentDTO getContent(UUID contentId) {
-        Content content = getContentEntity(contentId);
+        Content content = contentEntityService.getContentEntity(contentId);
 
         // Asynchronously increment view count
         incrementViewCount(contentId);
 
-        return convertToContentDto(content);
+        ContentDTO dto = convertToContentDto(content);
+
+        // Add presigned URLs for cloud storage content
+        if (content.getStorageLocation() == StorageLocation.CLOUD) {
+            String presignedUrl = fileService.generatePresignedUrl(
+                    content.getStoragePath(),
+                    StorageLocation.CLOUD);
+            dto.setPresignedUrl(presignedUrl);
+            dto.setPresignedUrlExpiresAt(Instant.now().plusSeconds(3600).toEpochMilli());
+        }
+
+        // Add presigned URLs for cloud storage thumbnails
+        if (content.getThumbnailStorageLocation() == StorageLocation.CLOUD) {
+            String thumbnailPresignedUrl = fileService.generatePresignedUrl(
+                    content.getThumbnailPath(),
+                    StorageLocation.CLOUD);
+            dto.setThumbnailPresignedUrl(thumbnailPresignedUrl);
+        }
+
+        return dto;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Content getContentEntity(UUID contentId) {
-        User currentUser = authService.getCurrentUser();
-        Content content = contentRepository.findById(contentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Content", "id", contentId));
-
-        // Verify ownership
-        if (!content.getUser().getId().equals(currentUser.getId())) {
-            throw new AccessDeniedException("You don't have permission to access this content");
-        }
-
-        return content;
+        // Delegate to the specialized service
+        return contentEntityService.getContentEntity(contentId);
     }
 
     @Override
@@ -166,6 +177,7 @@ public class ContentServiceImpl implements ContentService {
                 .viewCount(0)
                 .metadata(request.getMetadata())
                 .tags(new HashSet<>())
+                .storageLocation(StorageLocation.LOCAL) // Text content is always local
                 .build();
 
         // Set folder if provided
@@ -226,6 +238,7 @@ public class ContentServiceImpl implements ContentService {
                 .viewCount(0)
                 .metadata(request.getMetadata())
                 .tags(new HashSet<>())
+                .storageLocation(StorageLocation.LOCAL) // Link content is always local
                 .build();
 
         // Set folder if provided
@@ -270,7 +283,18 @@ public class ContentServiceImpl implements ContentService {
         return convertToContentDto(savedContent);
     }
 
-
+    @Override
+    @Transactional
+    @CacheEvict(value = {"contents", "recentContents", "popularContents","tags", "contentsByType"}, allEntries = true)
+    public ContentDTO createFileContent(
+            MultipartFile file,
+            String title,
+            String description,
+            UUID folderId,
+            List<UUID> tagIds,
+            List<String> newTags) {
+        return createFileContent(file, title, description, folderId, tagIds, newTags, StorageLocation.LOCAL);
+    }
 
     @Override
     @Transactional
@@ -281,8 +305,8 @@ public class ContentServiceImpl implements ContentService {
             String description,
             UUID folderId,
             List<UUID> tagIds,
-            List<String> newTags
-    ) {
+            List<String> newTags,
+            StorageLocation storageLocation) {
         User currentUser = authService.getCurrentUser();
 
         if (file.isEmpty()) {
@@ -307,6 +331,7 @@ public class ContentServiceImpl implements ContentService {
                 .sizeBytes(file.getSize())
                 .mimeType(file.getContentType())
                 .tags(new HashSet<>())
+                .storageLocation(storageLocation)
                 .build();
 
         // Set folder if provided
@@ -318,13 +343,14 @@ public class ContentServiceImpl implements ContentService {
         }
 
         // Store the file
-        String storagePath = fileService.storeFile(file, currentUser.getId(), contentType);
+        String storagePath = fileService.storeFile(file, currentUser.getId(), contentType, storageLocation);
         content.setStoragePath(storagePath);
 
         // Generate thumbnail for images and videos
         if (contentType == ContentType.IMAGE || contentType == ContentType.VIDEO) {
-            String thumbnailPath = fileService.generateThumbnail(storagePath, contentType);
+            String thumbnailPath = fileService.generateThumbnail(storagePath, contentType, storageLocation);
             content.setThumbnailPath(thumbnailPath);
+            content.setThumbnailStorageLocation(storageLocation);
         }
 
         // Save content
@@ -348,7 +374,8 @@ public class ContentServiceImpl implements ContentService {
         // Save content again with tags
         savedContent = contentRepository.save(savedContent);
 
-        log.info("Created new file content: {} for user: {}", savedContent.getTitle(), currentUser.getUsername());
+        log.info("Created new file content: {} for user: {} with storage location: {}",
+                savedContent.getTitle(), currentUser.getUsername(), storageLocation);
         return convertToContentDto(savedContent);
     }
 
@@ -356,7 +383,7 @@ public class ContentServiceImpl implements ContentService {
     @Transactional
     @CacheEvict(value = {"contents", "recentContents", "popularContents", "tags", "contentsByType"}, allEntries = true)
     public ContentDTO updateContent(UUID contentId, ContentUpdateRequest request) {
-        Content content = getContentEntity(contentId);
+        Content content = contentEntityService.getContentEntity(contentId);
         User currentUser = authService.getCurrentUser();
 
         // Update basic properties
@@ -384,6 +411,12 @@ public class ContentServiceImpl implements ContentService {
         // Update metadata if provided
         if (request.getMetadata() != null) {
             content.setMetadata(request.getMetadata());
+        }
+
+        // Update storage location if requested
+        if (request.getStorageLocation() != null &&
+                request.getStorageLocation() != content.getStorageLocation()) {
+            moveContentStorage(content, request.getStorageLocation());
         }
 
         // Update tags if provided
@@ -442,7 +475,7 @@ public class ContentServiceImpl implements ContentService {
             "contentsByFolder",
             "contentsByType"}, allEntries = true)
     public ContentDTO toggleFavorite(UUID contentId) {
-        Content content = getContentEntity(contentId);
+        Content content = contentEntityService.getContentEntity(contentId);
         content.setFavorite(!content.isFavorite());
 
         Content updatedContent = contentRepository.save(content);
@@ -455,7 +488,7 @@ public class ContentServiceImpl implements ContentService {
     @Transactional
     @CacheEvict(value = {"contents"}, allEntries = true)
     public ContentDTO updateContentTags(UUID contentId, List<UUID> tagIds, List<String> newTags) {
-        Content content = getContentEntity(contentId);
+        Content content = contentEntityService.getContentEntity(contentId);
 
         // Clear existing tags safely - manually break bidirectional relationship
         Set<Tag> existingTags = new HashSet<>(content.getTags());
@@ -489,12 +522,16 @@ public class ContentServiceImpl implements ContentService {
     @Transactional
     @CacheEvict(value = {"contents", "recentContents", "popularContents", "tags", "contentsByType"}, allEntries = true)
     public void deleteContent(UUID contentId) {
-        Content content = getContentEntity(contentId);
+        Content content = contentEntityService.getContentEntity(contentId);
 
-        // Delete file if it's a file-based content
+        // Delete file based on storage location
         if (content.getStoragePath() != null) {
-            fileService.deleteFile(content.getStoragePath());
+            fileService.deleteFile(content.getStoragePath(), content.getStorageLocation());
+        }
 
+        // Delete thumbnail if it exists
+        if (content.getThumbnailPath() != null) {
+            fileService.deleteFile(content.getThumbnailPath(), content.getThumbnailStorageLocation());
         }
 
         contentRepository.delete(content);
@@ -503,24 +540,46 @@ public class ContentServiceImpl implements ContentService {
 
     @Override
     public Resource getContentFile(UUID contentId) {
-        Content content = getContentEntity(contentId);
+        Content content = contentEntityService.getContentEntity(contentId);
 
         if (content.getStoragePath() == null) {
             throw new ResourceNotFoundException("File", "contentId", contentId);
         }
 
-        return fileService.loadFileAsResource(content.getStoragePath());
+        return fileService.loadFileAsResource(content.getStoragePath(), content.getStorageLocation());
     }
 
     @Override
     public Resource getContentThumbnail(UUID contentId) {
-        Content content = getContentEntity(contentId);
+        Content content = contentEntityService.getContentEntity(contentId);
 
         if (content.getThumbnailPath() == null) {
             throw new ResourceNotFoundException("Thumbnail", "contentId", contentId);
         }
 
-        return fileService.loadFileAsResource(content.getThumbnailPath());
+        return fileService.loadFileAsResource(content.getThumbnailPath(), content.getThumbnailStorageLocation());
+    }
+
+    @Override
+    public String getContentPresignedUrl(UUID contentId) {
+        Content content = contentEntityService.getContentEntity(contentId);
+
+        if (content.getStorageLocation() != StorageLocation.CLOUD) {
+            throw new BadRequestException("Content is not stored in cloud storage");
+        }
+
+        return fileService.generatePresignedUrl(content.getStoragePath(), StorageLocation.CLOUD);
+    }
+
+    @Override
+    public String getThumbnailPresignedUrl(UUID contentId) {
+        Content content = contentEntityService.getContentEntity(contentId);
+
+        if (content.getThumbnailStorageLocation() != StorageLocation.CLOUD) {
+            throw new BadRequestException("Thumbnail is not stored in cloud storage");
+        }
+
+        return fileService.generatePresignedUrl(content.getThumbnailPath(), StorageLocation.CLOUD);
     }
 
     @Override
@@ -546,7 +605,77 @@ public class ContentServiceImpl implements ContentService {
         });
     }
 
+    @Override
+    @Transactional
+    @CacheEvict(value = {"contents"}, allEntries = true)
+    public ContentDTO moveContentStorage(UUID contentId, StorageLocation targetStorageLocation) {
+        Content content = contentEntityService.getContentEntity(contentId);
 
+        if (content.getStorageLocation() == targetStorageLocation) {
+            log.info("Content is already in the requested storage location: {}", targetStorageLocation);
+            return convertToContentDto(content);
+        }
+
+        return moveContentStorage(content, targetStorageLocation);
+    }
+
+    private ContentDTO moveContentStorage(Content content, StorageLocation targetStorageLocation) {
+        // Only file-based content can be moved between storage locations
+        if (content.getContentType() == ContentType.TEXT || content.getContentType() == ContentType.LINK) {
+            throw new BadRequestException("Only file-based content can be moved between storage locations");
+        }
+
+        if (content.getStoragePath() == null) {
+            throw new BadRequestException("Content has no file to move");
+        }
+
+        // Move the file to the target storage
+        String newStoragePath;
+        if (targetStorageLocation == StorageLocation.CLOUD) {
+            newStoragePath = fileService.moveToCloud(
+                    content.getStoragePath(),
+                    content.getUser().getId(),
+                    content.getContentType());
+        } else {
+            newStoragePath = fileService.moveToLocal(
+                    content.getStoragePath(),
+                    content.getUser().getId(),
+                    content.getContentType());
+        }
+
+        // Update the content record
+        content.setStoragePath(newStoragePath);
+        content.setStorageLocation(targetStorageLocation);
+
+        // Move thumbnail if it exists
+        if (content.getThumbnailPath() != null) {
+            // For now, thumbnails move with the main file
+            // This could be improved to handle thumbnails more intelligently
+            content.setThumbnailStorageLocation(targetStorageLocation);
+        }
+
+        Content savedContent = contentRepository.save(content);
+        log.info("Moved content {} to storage location: {}",
+                content.getId(), targetStorageLocation);
+
+        return convertToContentDto(savedContent);
+    }
+
+    @Override
+    public Map<UUID, String> generateBatchPresignedUrls(List<Content> contents) {
+        Map<UUID, String> presignedUrls = new HashMap<>();
+
+        contents.stream()
+                .filter(content -> content.getStorageLocation() == StorageLocation.CLOUD)
+                .forEach(content -> {
+                    String presignedUrl = fileService.generatePresignedUrl(
+                            content.getStoragePath(),
+                            StorageLocation.CLOUD);
+                    presignedUrls.put(content.getId(), presignedUrl);
+                });
+
+        return presignedUrls;
+    }
 
     private ContentDTO convertToContentDto(Content content) {
         ContentDTO.ContentDTOBuilder builder = ContentDTO.builder()
@@ -559,8 +688,10 @@ public class ContentServiceImpl implements ContentService {
                 .sizeBytes(content.getSizeBytes())
                 .mimeType(content.getMimeType())
                 .storagePath(content.getStoragePath())
+                .storageLocation(content.getStorageLocation())
                 .originalFilename(content.getOriginalFilename())
                 .thumbnailPath(content.getThumbnailPath())
+                .thumbnailStorageLocation(content.getThumbnailStorageLocation())
                 .favorite(content.isFavorite())
                 .viewCount(content.getViewCount())
                 .metadata(content.getMetadata())
@@ -585,8 +716,24 @@ public class ContentServiceImpl implements ContentService {
             });
         }
 
+        // For cloud-stored content, add presigned URLs
+        if (content.getStorageLocation() == StorageLocation.CLOUD && content.getStoragePath() != null) {
+            String presignedUrl = fileService.generatePresignedUrl(content.getStoragePath(), StorageLocation.CLOUD);
+            builder.presignedUrl(presignedUrl);
+            builder.presignedUrlExpiresAt(Instant.now().plusSeconds(3600).toEpochMilli());
+        }
+
+        // For cloud-stored thumbnails
+        if (content.getThumbnailStorageLocation() == StorageLocation.CLOUD && content.getThumbnailPath() != null) {
+            String thumbnailPresignedUrl = fileService.generatePresignedUrl(
+                    content.getThumbnailPath(),
+                    StorageLocation.CLOUD);
+            builder.thumbnailPresignedUrl(thumbnailPresignedUrl);
+        }
+
         return builder.build();
     }
+
 
     private Page<ContentDTO> convertToContentDtoPage(Page<Content> contentPage) {
         List<ContentDTO> contentDtos = contentPage.getContent().stream()
@@ -595,4 +742,6 @@ public class ContentServiceImpl implements ContentService {
 
         return new PageImpl<>(contentDtos, contentPage.getPageable(), contentPage.getTotalElements());
     }
+
+
 }

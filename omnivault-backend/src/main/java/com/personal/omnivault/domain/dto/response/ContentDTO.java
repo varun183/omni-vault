@@ -1,6 +1,7 @@
 package com.personal.omnivault.domain.dto.response;
 
 import com.personal.omnivault.domain.model.ContentType;
+import com.personal.omnivault.domain.model.StorageLocation;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,8 +26,10 @@ public class ContentDTO {
     private Long sizeBytes;
     private String mimeType;
     private String storagePath;
+    private StorageLocation storageLocation;
     private String originalFilename;
     private String thumbnailPath;
+    private StorageLocation thumbnailStorageLocation;
     private boolean favorite;
     private Integer viewCount;
     private Map<String, Object> metadata;
@@ -40,4 +43,9 @@ public class ContentDTO {
     // For link content
     private String url;
     private String previewImagePath;
+
+    // For content stored in cloud
+    private String presignedUrl;
+    private String thumbnailPresignedUrl;
+    private Long presignedUrlExpiresAt;
 }

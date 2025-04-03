@@ -5,6 +5,7 @@ import com.personal.omnivault.domain.dto.request.LinkContentCreateRequest;
 import com.personal.omnivault.domain.dto.request.TextContentCreateRequest;
 import com.personal.omnivault.domain.dto.response.ContentDTO;
 import com.personal.omnivault.domain.model.ContentType;
+import com.personal.omnivault.domain.model.StorageLocation;
 import com.personal.omnivault.service.ContentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -96,8 +98,10 @@ public class ContentController {
             @RequestParam(required = false) String description,
             @RequestParam(required = false) UUID folderId,
             @RequestParam(required = false) List<UUID> tagIds,
-            @RequestParam(required = false) List<String> newTags) {
-        return ResponseEntity.ok(contentService.createFileContent(file, title, description, folderId, tagIds, newTags));
+            @RequestParam(required = false) List<String> newTags,
+            @RequestParam(required = false, defaultValue = "LOCAL") StorageLocation storageLocation) {
+        return ResponseEntity.ok(contentService.createFileContent(
+                file, title, description, folderId, tagIds, newTags, storageLocation));
     }
 
     @PutMapping("/{contentId}")
@@ -120,6 +124,13 @@ public class ContentController {
         return ResponseEntity.ok(contentService.updateContentTags(contentId, tagIds, newTags));
     }
 
+    @PutMapping("/{contentId}/storage")
+    public ResponseEntity<ContentDTO> moveContentStorage(
+            @PathVariable UUID contentId,
+            @RequestParam StorageLocation targetLocation) {
+        return ResponseEntity.ok(contentService.moveContentStorage(contentId, targetLocation));
+    }
+
     @DeleteMapping("/{contentId}")
     public ResponseEntity<Void> deleteContent(@PathVariable UUID contentId) {
         contentService.deleteContent(contentId);
@@ -136,7 +147,7 @@ public class ContentController {
                 .contentType(contentType != null ?
                         MediaType.parseMediaType(contentType) :
                         MediaType.APPLICATION_OCTET_STREAM)
-                .cacheControl(CacheControl.maxAge(24, TimeUnit.HOURS)); ;
+                .cacheControl(CacheControl.maxAge(24, TimeUnit.HOURS));
 
         // Use "inline" for images, videos, and PDFs so they display in browser
         if (contentType != null &&
@@ -154,6 +165,12 @@ public class ContentController {
         return responseBuilder.body(resource);
     }
 
+    @GetMapping("/{contentId}/cloud-url")
+    public ResponseEntity<Map<String, String>> getContentPresignedUrl(@PathVariable UUID contentId) {
+        String url = contentService.getContentPresignedUrl(contentId);
+        return ResponseEntity.ok(Map.of("url", url));
+    }
+
     @GetMapping("/{contentId}/thumbnail")
     public ResponseEntity<Resource> getContentThumbnail(@PathVariable UUID contentId) {
         Resource resource = contentService.getContentThumbnail(contentId);
@@ -166,13 +183,16 @@ public class ContentController {
                 .body(resource);
     }
 
+    @GetMapping("/{contentId}/thumbnail-url")
+    public ResponseEntity<Map<String, String>> getThumbnailPresignedUrl(@PathVariable UUID contentId) {
+        String url = contentService.getThumbnailPresignedUrl(contentId);
+        return ResponseEntity.ok(Map.of("url", url));
+    }
+
     @GetMapping("/search")
     public ResponseEntity<Page<ContentDTO>> searchContent(
             @RequestParam String query,
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(contentService.searchContent(query, pageable));
     }
-
-
 }
-

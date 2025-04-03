@@ -1,5 +1,6 @@
 package com.personal.omnivault.domain.dto.request;
 
+import com.personal.omnivault.domain.model.StorageLocation;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,6 +31,9 @@ public class ContentUpdateRequest {
     private List<String> newTags;
 
     private Map<String, Object> metadata;
+
+    // Storage location preference
+    private StorageLocation storageLocation;
 
     // For text content
     private String textContent;
