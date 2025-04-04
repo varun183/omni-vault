@@ -173,6 +173,13 @@ public class ContentController {
 
     @GetMapping("/{contentId}/thumbnail")
     public ResponseEntity<Resource> getContentThumbnail(@PathVariable UUID contentId) {
+        ContentDTO content = contentService.getContent(contentId);
+
+        // Check if thumbnail exists
+        if (content.getThumbnailPath() == null) {
+            return ResponseEntity.notFound().build();
+        }
+
         Resource resource = contentService.getContentThumbnail(contentId);
 
         // Always use inline disposition for thumbnails
