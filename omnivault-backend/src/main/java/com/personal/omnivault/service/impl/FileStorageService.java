@@ -12,10 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Path;
 import java.util.UUID;
 
-/**
- * Implementation of StorageService that delegates to the FileService
- * This maintains backward compatibility while using our new modular approach
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j

@@ -20,9 +20,7 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.UUID;
 
-/**
- * A service that combines local file storage and cloud storage
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -224,12 +222,7 @@ public class HybridFileService implements FileService {
         return localFileService.detectMimeType(file, originalFilename);
     }
 
-    /**
-     * Generate a presigned URL for a file in cloud storage
-     * @param storagePath The storage path
-     * @param storageLocation The storage location
-     * @return A presigned URL or null if not in cloud storage
-     */
+
     public String generatePresignedUrl(String storagePath, StorageLocation storageLocation) {
         if (storageLocation == StorageLocation.CLOUD) {
             if (!cloudStorageService.isEnabled()) {
@@ -247,13 +240,7 @@ public class HybridFileService implements FileService {
         return null;
     }
 
-    /**
-     * Move a file from local storage to cloud storage
-     * @param storagePath The local storage path
-     * @param userId The user ID
-     * @param contentType The content type
-     * @return The new cloud storage path
-     */
+
     public String moveToCloud(String storagePath, UUID userId, ContentType contentType) {
         if (!cloudStorageService.isEnabled()) {
             throw new FileStorageException("Cloud storage is not enabled");
@@ -285,13 +272,7 @@ public class HybridFileService implements FileService {
         }
     }
 
-    /**
-     * Move a file from cloud storage to local storage
-     * @param storagePath The cloud storage path
-     * @param userId The user ID
-     * @param contentType The content type
-     * @return The new local storage path
-     */
+
     public String moveToLocal(String storagePath, UUID userId, ContentType contentType) {
         if (!cloudStorageService.isEnabled()) {
             throw new FileStorageException("Cloud storage is not enabled");

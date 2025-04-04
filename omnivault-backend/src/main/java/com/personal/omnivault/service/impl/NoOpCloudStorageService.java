@@ -11,10 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
-/**
- * A no-op implementation of CloudStorageService that is used when cloud storage is disabled.
- * All operations throw exceptions to ensure they're never actually called.
- */
+
 @Service
 @Slf4j
 @ConditionalOnProperty(name = "aws.s3.enabled", havingValue = "false", matchIfMissing = true)

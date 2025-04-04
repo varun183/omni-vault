@@ -8,6 +8,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Service for managing user tags.
+ * Provides comprehensive tag management operations including
+ * creation, retrieval, update, and deletion of tags. Supports
+ * advanced tag-related functionalities like searching and
+ * bulk tag operations.
+ */
 public interface TagService {
 
     /**

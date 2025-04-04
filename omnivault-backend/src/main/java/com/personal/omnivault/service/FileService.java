@@ -8,7 +8,9 @@ import java.nio.file.Path;
 import java.util.UUID;
 
 /**
- * Interface for file storage operations
+ * Service interface for file storage and management operations.
+ * Provides methods for initializing storage, storing files, generating thumbnails,
+ * loading resources, and performing file-related operations.
  */
 public interface FileService {
 

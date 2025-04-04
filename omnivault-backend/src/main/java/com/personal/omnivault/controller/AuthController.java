@@ -6,7 +6,6 @@ import com.personal.omnivault.domain.dto.request.RegisterRequest;
 import com.personal.omnivault.domain.dto.request.TokenRefreshRequest;
 import com.personal.omnivault.domain.dto.response.AuthResponse;
 import com.personal.omnivault.domain.dto.response.UserDTO;
-import com.personal.omnivault.domain.model.User;
 import com.personal.omnivault.exception.BadRequestException;
 import com.personal.omnivault.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,23 +47,13 @@ public class AuthController {
 
     @GetMapping("/user")
     public ResponseEntity<UserDTO> getCurrentUser() {
-        User user = authService.getCurrentUser();
-        UserDTO userDto = UserDTO.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .createdAt(user.getCreatedAt())
-                .build();
-        return ResponseEntity.ok(userDto);
+        return ResponseEntity.ok(authService.getCurrentUserDTO());
     }
 
     @PostMapping("/verify/token")
     public ResponseEntity<Map<String, Boolean>> verifyEmail(@RequestParam String token) {
         boolean verified = authService.verifyEmail(token);
-        Map<String, Boolean> response = Map.of("verified", verified);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of("verified", verified));
     }
 
     @PostMapping("/verify/otp")
@@ -72,8 +61,7 @@ public class AuthController {
             @RequestParam String email,
             @RequestParam String otpCode) {
         boolean verified = authService.verifyEmailWithOTP(email, otpCode);
-        Map<String, Boolean> response = Map.of("verified", verified);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of("verified", verified));
     }
 
     @PostMapping("/resend-verification")
@@ -87,7 +75,6 @@ public class AuthController {
         }
 
         boolean sent = authService.resendVerificationEmail(email);
-        Map<String, Boolean> response = Map.of("sent", sent);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of("sent", sent));
     }
 }

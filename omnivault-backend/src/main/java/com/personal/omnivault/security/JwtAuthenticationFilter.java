@@ -17,6 +17,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.UUID;
 
+/**
+ * JWT Authentication Filter for processing and validating JWT tokens.
+ * Intercepts incoming requests to validate JWT tokens, set authentication context,
+ * and support both header-based and query parameter-based token authentication.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -25,6 +30,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final TokenProvider tokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
 
+    /**
+     * Filters each request to validate and process JWT authentication.
+     * Performs the following steps:
+     * 1. Attempts to extract JWT from request header or query parameter
+     * 2. Validates the token
+     * 3. Loads user details if token is valid
+     * 4. Sets authentication context for the request
+     *
+     * @param request The HTTP servlet request
+     * @param response The HTTP servlet response
+     * @param filterChain The filter chain for continuing request processing
+     * @throws ServletException if a servlet-related error occurs
+     * @throws IOException if an input/output error occurs
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
@@ -54,6 +73,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * Extracts JWT token from the Authorization header.
+     * Expects the token to be in the format: "Bearer {token}"
+     *
+     * @param request The HTTP servlet request
+     * @return The JWT token, or null if not found
+     */
     private String getJwtFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {

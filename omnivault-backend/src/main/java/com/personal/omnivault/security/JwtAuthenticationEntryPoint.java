@@ -12,9 +12,27 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Custom authentication entry point for handling unauthorized access attempts.
+ * Provides a consistent error response for unauthenticated requests,
+ * returning a JSON representation of the authentication error.
+ */
 @Component
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
+    /**
+     * Handles unauthorized access attempts by sending a structured error response.
+     * Creates a JSON response with:
+     * - HTTP status code
+     * - Error type
+     * - Error message
+     * - Request path
+     *
+     * @param request The HTTP request that resulted in an authentication failure
+     * @param response The HTTP response to be sent back to the client
+     * @param authException The authentication exception that caused the entry point to be called
+     * @throws IOException if an input or output exception occurs
+     */
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {

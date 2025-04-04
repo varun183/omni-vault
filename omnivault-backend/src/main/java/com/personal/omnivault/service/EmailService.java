@@ -3,6 +3,12 @@ package com.personal.omnivault.service;
 import com.personal.omnivault.domain.model.User;
 import com.personal.omnivault.domain.model.VerificationToken;
 
+
+/**
+ * Service responsible for sending email communications.
+ * Handles email verification processes, including sending initial
+ * verification emails and resending verification tokens.
+ */
 public interface EmailService {
 
     /**

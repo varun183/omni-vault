@@ -77,7 +77,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Generate verification token and OTP
         String token = UUID.randomUUID().toString();
-        String otpCode = generateOTP(6); // 6-digit OTP
+        String otpCode = generateOTP(); // 6-digit OTP
 
         // Create verification token with expiry
         int tokenExpiryMinutes = 1440; // 24 hours
@@ -168,10 +168,10 @@ public class AuthServiceImpl implements AuthService {
         return true;
     }
 
-    private String generateOTP(int length) {
+    private String generateOTP() {
         StringBuilder otp = new StringBuilder();
         Random random = new Random();
-        for (int i = 0; i < length; i++) {
+        for (int i = 0; i < 6; i++) {
             otp.append(random.nextInt(10));
         }
         return otp.toString();
@@ -253,6 +253,12 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new AuthenticationException("User not found"));
     }
 
+    @Override
+    public UserDTO getCurrentUserDTO() {
+        User user = getCurrentUser();
+        return convertToUserDto(user);
+    }
+
     private RefreshToken createRefreshToken(User user) {
         // Delete any existing non-blacklisted refresh tokens
         refreshTokenRepository.findAllByUserAndBlacklistedFalse(user)
@@ -281,10 +287,6 @@ public class AuthServiceImpl implements AuthService {
                 .user(convertToUserDto(user))
                 .build();
     }
-
-
-
-
 
     private UserDTO convertToUserDto(User user) {
         return UserDTO.builder()

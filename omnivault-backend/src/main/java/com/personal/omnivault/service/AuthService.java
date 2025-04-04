@@ -4,8 +4,12 @@ import com.personal.omnivault.domain.dto.request.LoginRequest;
 import com.personal.omnivault.domain.dto.request.RegisterRequest;
 import com.personal.omnivault.domain.dto.request.TokenRefreshRequest;
 import com.personal.omnivault.domain.dto.response.AuthResponse;
+import com.personal.omnivault.domain.dto.response.UserDTO;
 import com.personal.omnivault.domain.model.User;
 
+/**
+ * Service interface for authentication operations
+ */
 public interface AuthService {
 
     /**
@@ -45,6 +49,13 @@ public interface AuthService {
      * @return The authenticated user
      */
     User getCurrentUser();
+
+    /**
+     * Get the currently authenticated user as a DTO
+     *
+     * @return The authenticated user as a DTO
+     */
+    UserDTO getCurrentUserDTO();
 
     /**
      * Verify email using token

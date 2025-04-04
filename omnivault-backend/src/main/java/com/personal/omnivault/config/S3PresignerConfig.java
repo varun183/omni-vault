@@ -11,6 +11,12 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 import java.net.URI;
 
+/**
+ * Configuration class for creating an S3Presigner bean.
+ * Provides a configurable S3Presigner for generating pre-signed URLs
+ * for S3 or S3-compatible storage services. The configuration is
+ * conditionally enabled based on application properties.
+ */
 @Configuration
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "aws.s3.enabled", havingValue = "true")
@@ -18,6 +24,16 @@ public class S3PresignerConfig {
 
     private final AwsS3Config s3Config;
 
+    /**
+     * Creates an S3Presigner bean for generating pre-signed URLs.
+     *
+     * Configures the presigner with:
+     * - AWS credentials
+     * - Specified region
+     * - Optional custom endpoint for S3-compatible services
+     *
+     * @return Configured S3Presigner or null if S3 is disabled
+     */
     @Bean
     public S3Presigner s3Presigner() {
         if (!s3Config.isEnabled()) {

@@ -27,10 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Service for handling file storage operations.
- * Extracts file functionality from FileStorageService to make it more modular.
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -45,9 +42,7 @@ public class FileServiceImpl implements FileService {
         init();
     }
 
-    /**
-     * Initialize storage directories
-     */
+
     public void init() {
         rootLocation = Paths.get(storageProperties.getLocation());
         try {
@@ -65,14 +60,7 @@ public class FileServiceImpl implements FileService {
         }
     }
 
-    /**
-     * Store a file and return its storage path
-     *
-     * @param file        The file to store
-     * @param userId      The owner's user ID
-     * @param contentType The type of content being stored
-     * @return The storage path
-     */
+
     public String storeFile(MultipartFile file, UUID userId, ContentType contentType) {
         if (file.isEmpty()) {
             throw new FileStorageException("Failed to store empty file");
@@ -133,13 +121,7 @@ public class FileServiceImpl implements FileService {
         }
     }
 
-    /**
-     * Generate a thumbnail for an image or video
-     *
-     * @param storagePath The storage path of the original file
-     * @param contentType The type of content
-     * @return The path to the generated thumbnail
-     */
+
     public String generateThumbnail(String storagePath, ContentType contentType) {
         Path sourcePath = getPath(storagePath);
         File sourceFile = sourcePath.toFile();
@@ -204,12 +186,7 @@ public class FileServiceImpl implements FileService {
     }
 
 
-    /**
-     * Load a file as a Resource
-     *
-     * @param storagePath The storage path of the file
-     * @return The file as a Resource
-     */
+
     public Resource loadFileAsResource(String storagePath) {
         try {
             Path file = getPath(storagePath);
@@ -225,21 +202,12 @@ public class FileServiceImpl implements FileService {
         }
     }
 
-    /**
-     * Get the absolute file path from a storage path
-     *
-     * @param storagePath The storage path of the file
-     * @return The absolute file path
-     */
+
     public Path getPath(String storagePath) {
         return rootLocation.resolve(storagePath);
     }
 
-    /**
-     * Delete a file
-     *
-     * @param storagePath The storage path of the file to delete
-     */
+
     public void deleteFile(String storagePath) {
         if (storagePath == null) {
             return;
@@ -261,12 +229,7 @@ public class FileServiceImpl implements FileService {
         }
     }
 
-    /**
-     * Check if a file exists
-     *
-     * @param storagePath The storage path of the file
-     * @return true if the file exists, false otherwise
-     */
+
     public boolean fileExists(String storagePath) {
         if (storagePath == null) {
             return false;
@@ -275,12 +238,7 @@ public class FileServiceImpl implements FileService {
         return Files.exists(file);
     }
 
-    /**
-     * Get the Content-Type of a file
-     *
-     * @param storagePath The storage path of the file
-     * @return The Content-Type
-     */
+
     public String getContentType(String storagePath) {
         try {
             Path file = getPath(storagePath);
@@ -291,13 +249,7 @@ public class FileServiceImpl implements FileService {
         }
     }
 
-    /**
-     * Detects the MIME type of  file using multiple methods
-     *
-     * @param file             The uploaded file
-     * @param originalFilename The original filename
-     * @return The detected MIME type
-     */
+
     public String detectMimeType(MultipartFile file, String originalFilename) {
         // First, try to use the MIME type provided by the client
         String mimeType = file.getContentType();

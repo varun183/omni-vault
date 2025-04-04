@@ -7,20 +7,16 @@ import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
-
+/**
+ * Utility class for security-related operations.
+ * Provides methods for checking resource ownership and
+ * performing security-related validations across the application.
+ */
 @Component
 @Slf4j
 public class SecurityUtils {
 
-    /**
-     * Verifies that a resource belongs to the current user
-     *
-     * @param resourceOwnerId The owner ID of the resource
-     * @param currentUserId   The current user's ID
-     * @param resourceType    The type of resource being checked
-     * @param resourceId      The ID of the resource being checked
-     * @throws AccessDeniedException if the resource doesn't belong to the current user
-     */
+
     public static void checkOwnership(UUID resourceOwnerId, UUID currentUserId, String resourceType, UUID resourceId) {
         if (!resourceOwnerId.equals(currentUserId)) {
             log.warn("Unauthorized access attempt to {} with ID: {} by user: {}", resourceType, resourceId, currentUserId);
@@ -28,15 +24,7 @@ public class SecurityUtils {
         }
     }
 
-    /**
-     * Verifies that a resource belongs to the current user
-     *
-     * @param resourceOwner The owner of the resource
-     * @param currentUser   The current user
-     * @param resourceType  The type of resource being checked
-     * @param resourceId    The ID of the resource being checked
-     * @throws AccessDeniedException if the resource doesn't belong to the current user
-     */
+
     public static void checkOwnership(User resourceOwner, User currentUser, String resourceType, UUID resourceId) {
         checkOwnership(resourceOwner.getId(), currentUser.getId(), resourceType, resourceId);
     }

@@ -7,6 +7,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Path;
 import java.util.UUID;
 
+/**
+ * Service interface for generic storage operations.
+ * Provides methods for storing, retrieving, and managing files across
+ * different storage implementations (local, cloud, etc.).
+ */
 public interface StorageService {
 
     /**

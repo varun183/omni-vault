@@ -11,6 +11,11 @@ import software.amazon.awssdk.services.ses.SesClient;
 
 import java.util.List;
 
+/**
+ * Configuration class for Amazon Simple Email Service (SES) integration.
+ * Provides configuration properties and bean creation for SES client.
+ * Supports both production and sandbox modes for email sending.
+ */
 @Configuration
 @ConfigurationProperties(prefix = "aws.ses")
 @Data
@@ -24,6 +29,13 @@ public class AwsSesConfig {
     private boolean sandboxMode;
     private List<String> verifiedRecipients;
 
+    /**
+     * Creates a SES client bean configured with provided credentials.
+     * Configuration is based on application properties.
+     * Returns null if SES is disabled.
+     *
+     * @return Configured SesClient or null if SES is disabled
+     */
     @Bean
     public SesClient sesClient() {
         if (!enabled) {

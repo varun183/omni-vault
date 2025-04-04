@@ -76,12 +76,6 @@ public class ContentTypeUtils {
         return map;
     }
 
-    /**
-     * Determines the content type based on filename and/or MIME type.
-     * @param filename The filename to analyze
-     * @param mimeType Optional MIME type for more accurate detection
-     * @return The determined ContentType
-     */
     public static ContentType determineContentType(String filename, String mimeType) {
         // If we have a MIME type, try to use that first
         if (mimeType != null && MIME_TYPE_MAP.containsKey(mimeType)) {
@@ -109,20 +103,12 @@ public class ContentTypeUtils {
         return ContentType.OTHER;
     }
 
-    /**
-     * Determines the content type based on filename only.
-     * @param filename The filename to analyze
-     * @return The determined ContentType
-     */
+
     public static ContentType determineContentType(String filename) {
         return determineContentType(filename, null);
     }
 
-    /**
-     * Checks if the file type can be viewed in browser.
-     * @param mimeType The MIME type to check
-     * @return true if viewable in browser, false otherwise
-     */
+
     public static boolean isViewableInBrowser(String mimeType) {
         if (mimeType == null) return false;
 
@@ -134,12 +120,7 @@ public class ContentTypeUtils {
                 mimeType.equals("application/xml");
     }
 
-    /**
-     * Gets a descriptive label for a document type based on MIME type or filename.
-     * @param mimeType The MIME type
-     * @param filename Optional filename for fallback detection
-     * @return A user-friendly document type label
-     */
+
     public static String getDocumentTypeLabel(String mimeType, String filename) {
         // Check by MIME type first
         if (mimeType != null) {
@@ -211,11 +192,7 @@ public class ContentTypeUtils {
         return "Document";
     }
 
-    /**
-     * Gets a descriptive label for a document type based on MIME type only.
-     * @param mimeType The MIME type
-     * @return A user-friendly document type label
-     */
+
     public static String getDocumentTypeLabel(String mimeType) {
         return getDocumentTypeLabel(mimeType, null);
     }

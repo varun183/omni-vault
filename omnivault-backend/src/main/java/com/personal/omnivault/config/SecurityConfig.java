@@ -26,6 +26,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Configuration class for application-wide security settings.
+ * Configures authentication, authorization, CORS, CSRF protection,
+ * session management, and JWT-based authentication filter.
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -36,16 +41,43 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtProperties jwtProperties;
 
+    /**
+     * Creates a password encoder bean using BCrypt.
+     *
+     * @return PasswordEncoder using BCryptPasswordEncoder
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Provides the authentication manager for the application.
+     *
+     * @param authenticationConfiguration Spring's authentication configuration
+     * @return AuthenticationManager for processing authentication requests
+     * @throws Exception if authentication manager creation fails
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
+    /**
+     * Configures the main security filter chain.
+     * Sets up:
+     * - CORS configuration
+     * - CSRF protection
+     * - Exception handling
+     * - Session management
+     * - Header security
+     * - Endpoint authorization
+     * - JWT authentication filter
+     *
+     * @param http HttpSecurity configuration builder
+     * @return Configured SecurityFilterChain
+     * @throws Exception if security configuration fails
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -80,6 +112,12 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Configures Cross-Origin Resource Sharing (CORS) settings.
+     * Allows specific origins, methods, and headers for web security.
+     *
+     * @return CorsConfigurationSource with configured CORS settings
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();

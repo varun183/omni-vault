@@ -16,6 +16,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Service for managing user content across various types and storage locations.
+ * Provides comprehensive content management operations including
+ * creation, retrieval, update, deletion, and advanced querying capabilities.
+ */
 public interface ContentService {
 
     /**

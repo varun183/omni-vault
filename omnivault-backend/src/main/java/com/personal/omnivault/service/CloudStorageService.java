@@ -6,7 +6,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 /**
- * Interface for cloud storage operations
+ * Service interface for cloud storage operations.
+ * Provides methods for storing, retrieving, and managing files in cloud storage.
+ * Supports operations like checking storage availability, file storage,
+ * resource loading, and generating presigned URLs.
  */
 public interface CloudStorageService {
 

@@ -10,10 +10,26 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Duration;
 import java.util.Arrays;
 
+/**
+ * Configuration class for setting up application-wide caching using Caffeine.
+ * Enables caching and configures cache settings such as expiration,
+ * initial capacity, and maximum size. Defines named caches for
+ * different types of content and entities.
+ */
 @Configuration
 @EnableCaching
 public class CacheConfig {
 
+
+    /**
+     * Configures the base Caffeine cache settings.
+     * Sets up default cache properties including:
+     * - Expiration after 10 minutes of access
+     * - Initial capacity of 50 entries
+     * - Maximum of 500 entries
+     *
+     * @return Configured Caffeine cache builder
+     */
     @Bean
     public Caffeine<Object, Object> caffeineConfig() {
         return Caffeine.newBuilder()
@@ -22,6 +38,23 @@ public class CacheConfig {
                 .maximumSize(500);
     }
 
+
+    /**
+     * Creates a CacheManager with predefined named caches.
+     * Configures specific caches for various application entities:
+     * - contents
+     * - folders
+     * - tags
+     * - users
+     * - contentsByFolder
+     * - contentsByTag
+     * - contentsByType
+     * - recentContents
+     * - popularContents
+     *
+     * @param caffeine The base Caffeine cache configuration
+     * @return Configured CacheManager with named caches
+     */
     @Bean
     public CacheManager cacheManager(Caffeine<Object, Object> caffeine) {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();

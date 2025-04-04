@@ -10,6 +10,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZonedDateTime;
 
+/**
+ * Configuration class for scheduled background tasks.
+ * Provides automated maintenance tasks for the application,
+ * such as cleaning up expired verification tokens.
+ */
 @Configuration
 @EnableScheduling
 @RequiredArgsConstructor
@@ -19,7 +24,11 @@ public class SchedulingConfig {
     private final VerificationTokenRepository verificationTokenRepository;
 
     /**
-     * Clean up expired verification tokens daily
+     * Scheduled task to clean up expired verification tokens.
+     * Runs daily at midnight to remove verification tokens
+     * that have passed their expiration date.
+     * This helps maintain database cleanliness and prevents
+     * accumulation of stale verification tokens.
      */
     @Scheduled(cron = "0 0 0 * * ?") // Run at midnight every day
     @Transactional
