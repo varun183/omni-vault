@@ -7,15 +7,13 @@ import com.personal.omnivault.domain.dto.response.ContentDTO;
 import com.personal.omnivault.domain.model.ContentType;
 import com.personal.omnivault.domain.model.StorageLocation;
 import com.personal.omnivault.service.ContentService;
+import com.personal.omnivault.util.FileResponseUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.CacheControl;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,7 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/contents")
@@ -141,28 +138,7 @@ public class ContentController {
     public ResponseEntity<Resource> getContentFile(@PathVariable UUID contentId) {
         Resource resource = contentService.getContentFile(contentId);
         ContentDTO content = contentService.getContent(contentId);
-        String contentType = content.getMimeType();
-
-        ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
-                .contentType(contentType != null ?
-                        MediaType.parseMediaType(contentType) :
-                        MediaType.APPLICATION_OCTET_STREAM)
-                .cacheControl(CacheControl.maxAge(24, TimeUnit.HOURS));
-
-        // Use "inline" for images, videos, and PDFs so they display in browser
-        if (contentType != null &&
-                (contentType.startsWith("image/") ||
-                        contentType.startsWith("video/") ||
-                        contentType.equals("application/pdf"))) {
-            responseBuilder.header(HttpHeaders.CONTENT_DISPOSITION,
-                    "inline; filename=\"" + content.getOriginalFilename() + "\"");
-        } else {
-            // Use "attachment" for other file types to force download
-            responseBuilder.header(HttpHeaders.CONTENT_DISPOSITION,
-                    "attachment; filename=\"" + content.getOriginalFilename() + "\"");
-        }
-
-        return responseBuilder.body(resource);
+        return FileResponseUtils.createFileResponse(resource, content);
     }
 
     @GetMapping("/{contentId}/cloud-url")
@@ -181,13 +157,7 @@ public class ContentController {
         }
 
         Resource resource = contentService.getContentThumbnail(contentId);
-
-        // Always use inline disposition for thumbnails
-        return ResponseEntity.ok()
-                .contentType(MediaType.IMAGE_JPEG)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
-                .cacheControl(CacheControl.maxAge(24, TimeUnit.HOURS))
-                .body(resource);
+        return FileResponseUtils.createThumbnailResponse(resource);
     }
 
     @GetMapping("/{contentId}/thumbnail-url")
