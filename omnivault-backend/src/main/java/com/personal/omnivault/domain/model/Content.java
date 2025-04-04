@@ -54,17 +54,17 @@ public class Content {
     @Column(name = "mime_type")
     private String mimeType;
 
-    @Column(name = "storage_path")
+    @Column(name = "storage_path", columnDefinition = "TEXT")
     private String storagePath;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "storage_location", nullable = false)
     private StorageLocation storageLocation = StorageLocation.LOCAL;
 
-    @Column(name = "original_filename")
+    @Column(name = "original_filename", columnDefinition = "TEXT")
     private String originalFilename;
 
-    @Column(name = "thumbnail_path")
+    @Column(name = "thumbnail_path", columnDefinition = "TEXT")
     private String thumbnailPath;
 
     @Enumerated(EnumType.STRING)
