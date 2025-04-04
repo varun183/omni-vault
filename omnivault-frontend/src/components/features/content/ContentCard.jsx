@@ -11,6 +11,8 @@ import {
   FiFolder,
   FiTrash,
   FiEdit,
+  FiCloud,
+  FiServer,
 } from "react-icons/fi";
 import {
   toggleFavorite,
@@ -102,6 +104,29 @@ const ContentCard = ({ content, onEdit }) => {
     onEdit(content);
   };
 
+  const getStorageLocationIcon = () => {
+    if (content.storageLocation === "CLOUD") {
+      return (
+        <span
+          className="ml-1 text-blue-500 tooltip-wrapper"
+          title="Stored in cloud"
+        >
+          <FiCloud size={14} />
+        </span>
+      );
+    } else if (content.storageLocation === "LOCAL") {
+      return (
+        <span
+          className="ml-1 text-gray-500 tooltip-wrapper"
+          title="Stored locally"
+        >
+          <FiServer size={14} />
+        </span>
+      );
+    }
+    return null;
+  };
+
   const getContentIcon = () => {
     const iconConfig = getContentTypeIcon(content.contentType);
     const IconComponent = iconMap[iconConfig.name];
@@ -125,7 +150,7 @@ const ContentCard = ({ content, onEdit }) => {
           </div>
         );
       case "image":
-        return previewConfig.hasThumbnail ? (
+        return content.thumbnailPath ? (
           <div className="relative pt-[56.25%] w-full overflow-hidden">
             <AuthenticatedMedia
               contentId={content.id}
@@ -176,7 +201,10 @@ const ContentCard = ({ content, onEdit }) => {
           <div className="flex items-center w-full min-w-0">
             {getContentIcon()}
             <h3 className="ml-2 font-medium flex-grow overflow-hidden">
-              <span className="block truncate">{content.title}</span>
+              <span className="block truncate flex items-center">
+                {content.title}
+                {getStorageLocationIcon()}
+              </span>
             </h3>
           </div>
           <div className="flex items-center space-x-1 ml-2">

@@ -154,6 +154,9 @@ export const isTextBasedDocument = (mimeType, filename) => {
     if (mimeType === "application/json") return true;
     if (mimeType === "application/xml") return true;
     if (mimeType === "application/javascript") return true;
+    if (mimeType === "application/typescript") return true;
+    if (mimeType === "application/x-sh") return true;
+    if (mimeType === "application/x-httpd-php") return true;
   }
 
   // Fall back to filename extension
@@ -169,9 +172,31 @@ export const isTextBasedDocument = (mimeType, filename) => {
         "csv",
         "log",
         "js",
+        "ts",
+        "jsx",
+        "tsx",
         "css",
+        "scss",
+        "less",
         "html",
         "htm",
+        "svg",
+        "php",
+        "py",
+        "rb",
+        "java",
+        "c",
+        "cpp",
+        "h",
+        "cs",
+        "sh",
+        "bash",
+        "yml",
+        "yaml",
+        "toml",
+        "ini",
+        "conf",
+        "sql",
       ].includes(extension)
     );
   }

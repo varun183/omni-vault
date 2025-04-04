@@ -1,5 +1,5 @@
 import React from "react";
-import { FiDownload, FiExternalLink } from "react-icons/fi";
+import { FiDownload, FiExternalLink, FiServer, FiCloud } from "react-icons/fi";
 import Button from "../../common/Button";
 import AuthenticatedMedia from "../../common/AuthenticatedMedia";
 import DocumentViewer from "./DocumentViewer";
@@ -67,22 +67,52 @@ const LinkContentRenderer = ({ content }) => {
   );
 };
 
+// Add this to the ImageContentRenderer component
 const ImageContentRenderer = ({ content }) => {
+  // Use presigned URL for cloud storage if available
   return (
     <div className="bg-white rounded-lg shadow p-6 mt-4">
-      <AuthenticatedMedia
-        contentId={content.id}
-        type="image"
-        alt={content.title}
-        className="max-w-full rounded"
-      />
-      <div className="mt-4 flex justify-end">
+      {content.storageLocation === "CLOUD" && content.presignedUrl ? (
+        // For cloud storage with presigned URL
+        <img
+          src={content.presignedUrl}
+          alt={content.title}
+          className="max-w-full rounded"
+        />
+      ) : (
+        // For local storage using AuthenticatedMedia component
+        <AuthenticatedMedia
+          contentId={content.id}
+          type="image"
+          alt={content.title}
+          className="max-w-full rounded"
+        />
+      )}
+      <div className="mt-4 flex justify-between items-center">
+        <div className="text-sm text-gray-500 flex items-center">
+          {content.storageLocation === "CLOUD" ? (
+            <>
+              <FiCloud className="mr-1" /> Stored in cloud
+            </>
+          ) : (
+            <>
+              <FiServer className="mr-1" /> Stored locally
+            </>
+          )}
+          {!content.thumbnailPath && (
+            <span className="ml-2 text-yellow-600">
+              (No thumbnail available)
+            </span>
+          )}
+        </div>
         <Button
           onClick={() =>
-            contentService.downloadFile(
-              content.id,
-              content.originalFilename || "image.jpg"
-            )
+            content.storageLocation === "CLOUD" && content.presignedUrl
+              ? window.open(content.presignedUrl, "_blank")
+              : contentService.downloadFile(
+                  content.id,
+                  content.originalFilename || "image.jpg"
+                )
           }
           variant="outline"
           className="flex items-center"
@@ -96,23 +126,47 @@ const ImageContentRenderer = ({ content }) => {
   );
 };
 
+// Similarly update the VideoContentRenderer component
 const VideoContentRenderer = ({ content }) => {
   return (
     <div className="bg-white rounded-lg shadow p-6 mt-4">
-      <AuthenticatedMedia
-        contentId={content.id}
-        type="video"
-        alt={content.title}
-        className="max-w-full rounded w-full"
-        controls={true}
-      />
-      <div className="mt-4 flex justify-end">
+      {content.storageLocation === "CLOUD" && content.presignedUrl ? (
+        // For cloud storage with presigned URL
+        <video
+          src={content.presignedUrl}
+          className="max-w-full rounded w-full"
+          controls={true}
+        />
+      ) : (
+        // For local storage using AuthenticatedMedia component
+        <AuthenticatedMedia
+          contentId={content.id}
+          type="video"
+          alt={content.title}
+          className="max-w-full rounded w-full"
+          controls={true}
+        />
+      )}
+      <div className="mt-4 flex justify-between items-center">
+        <div className="text-sm text-gray-500 flex items-center">
+          {content.storageLocation === "CLOUD" ? (
+            <>
+              <FiCloud className="mr-1" /> Stored in cloud
+            </>
+          ) : (
+            <>
+              <FiServer className="mr-1" /> Stored locally
+            </>
+          )}
+        </div>
         <Button
           onClick={() =>
-            contentService.downloadFile(
-              content.id,
-              content.originalFilename || "video.mp4"
-            )
+            content.storageLocation === "CLOUD" && content.presignedUrl
+              ? window.open(content.presignedUrl, "_blank")
+              : contentService.downloadFile(
+                  content.id,
+                  content.originalFilename || "video.mp4"
+                )
           }
           variant="outline"
           className="flex items-center"
@@ -133,8 +187,22 @@ const DocumentContentRenderer = ({ content }) => {
         contentId={content.id}
         filename={content.originalFilename}
         mimeType={content.mimeType}
+        content={content} // Pass the entire content object
         contentService={contentService}
       />
+
+      {/* Add storage indicator if desired */}
+      <div className="mt-2 text-xs text-gray-500 flex items-center justify-end">
+        {content.storageLocation === "CLOUD" ? (
+          <>
+            <FiCloud className="mr-1" /> Stored in cloud
+          </>
+        ) : (
+          <>
+            <FiServer className="mr-1" /> Stored locally
+          </>
+        )}
+      </div>
     </div>
   );
 };

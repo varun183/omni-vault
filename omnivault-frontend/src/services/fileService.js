@@ -1,17 +1,19 @@
 // src/services/fileService.js
 import axiosInstance from "./axiosInstance";
 import { apiCache } from "../utils/apiCache";
+import contentService from "./contentService";
 
 /**
  * Service for handling file-related operations
  */
 const fileService = {
   /**
-   * Fetches a file with authentication header and returns a blob URL
+   * Fetches a file with authentication header and returns a blob URL or presigned URL
    * @param {string} contentId - The ID of the content to fetch
-   * @returns {Promise<string>} A blob URL to the file
+   * @param {object} options - Optional parameters
+   * @returns {Promise<string>} A URL to the file (blob or presigned)
    */
-  fetchFileWithAuth: async (contentId) => {
+  fetchFileWithAuth: async (contentId, options = {}) => {
     const cacheKey = `file_${contentId}`;
 
     // Try cache first
@@ -21,13 +23,33 @@ const fileService = {
     }
 
     try {
+      // First check if a cloud URL is available for this content
+      if (options.checkCloud !== false) {
+        try {
+          const response = await axiosInstance.get(
+            `/contents/${contentId}/cloud-url`
+          );
+          if (response.data && response.data.url) {
+            const presignedUrl = response.data.url;
+            // Cache for a short time
+            apiCache.set(cacheKey, presignedUrl, 10 * 60 * 1000); // 10 minutes
+            return presignedUrl;
+          }
+        } catch (err) {
+          // If not cloud storage or error, fall back to direct fetch
+          // This is normal for local storage, so we just continue silently
+          console.log("fetchFilewithAuth error", err);
+        }
+      }
+
+      // Proceed with regular file fetch for local storage
       const response = await axiosInstance.get(`/contents/${contentId}/file`, {
         responseType: "blob",
       });
       const url = URL.createObjectURL(response.data);
 
-      // Cache for a short time (2 minutes)
-      apiCache.set(cacheKey, url, 2 * 60 * 1000);
+      // Cache for a short time
+      apiCache.set(cacheKey, url, 2 * 60 * 1000); // 2 minutes
 
       return url;
     } catch (error) {
@@ -51,6 +73,12 @@ const fileService = {
     }
 
     try {
+      // First check if the content has a thumbnail
+      const content = await contentService.getContent(contentId);
+      if (!content.thumbnailPath) {
+        return null; // No thumbnail available
+      }
+
       const response = await axiosInstance.get(
         `/contents/${contentId}/thumbnail`,
         {

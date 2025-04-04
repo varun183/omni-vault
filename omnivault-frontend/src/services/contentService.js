@@ -94,13 +94,22 @@ const contentService = {
     return response.data;
   },
 
-  uploadFile: async (file, title, description, folderId, tagIds, newTags) => {
+  uploadFile: async (
+    file,
+    title,
+    description,
+    folderId,
+    tagIds,
+    newTags,
+    storageLocation
+  ) => {
     const formData = new FormData();
     formData.append("file", file);
 
     if (title) formData.append("title", title);
     if (description) formData.append("description", description);
     if (folderId) formData.append("folderId", folderId);
+    if (storageLocation) formData.append("storageLocation", storageLocation);
 
     if (tagIds && tagIds.length > 0) {
       tagIds.forEach((tagId) => formData.append("tagIds", tagId));
@@ -169,8 +178,71 @@ const contentService = {
     return fileService.fetchThumbnailWithAuth(contentId);
   },
 
+  // Get a presigned URL for cloud content
+  getContentPresignedUrl: async (contentId) => {
+    const response = await axiosInstance.get(
+      `/contents/${contentId}/cloud-url`
+    );
+    return response.data.url;
+  },
+
+  // Get a presigned URL for a thumbnail
+  getThumbnailPresignedUrl: async (contentId) => {
+    const response = await axiosInstance.get(
+      `/contents/${contentId}/thumbnail-url`
+    );
+    return response.data.url;
+  },
+
+  // Move content between storage locations
+  moveContentStorage: async (contentId, targetLocation) => {
+    const response = await axiosInstance.put(
+      `/contents/${contentId}/storage?targetLocation=${targetLocation}`
+    );
+    return response.data;
+  },
+
   downloadFile: async (contentId, filename) => {
-    return fileService.downloadFile(contentId, filename);
+    try {
+      // First check if it's cloud storage with a presigned URL
+      try {
+        const presignedUrl = await contentService.getContentPresignedUrl(
+          contentId
+        );
+        if (presignedUrl) {
+          // Open in a new window/tab or trigger download via window.open
+          window.open(presignedUrl, "_blank");
+          return;
+        }
+      } catch (error) {
+        // If not cloud or error getting URL, fall back to direct download
+        console.log(
+          "Not cloud storage or error getting presigned URL, falling back to direct download",
+          error
+        );
+      }
+
+      // Original local storage download logic
+      const response = await axiosInstance.get(`/contents/${contentId}/file`, {
+        responseType: "blob",
+      });
+
+      // Create a blob URL and trigger download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename || "download");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      // Clean up
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 100);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+    }
   },
 };
 

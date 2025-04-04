@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { FiDownload, FiExternalLink } from "react-icons/fi";
+import { FiDownload, FiExternalLink, FiCloud, FiServer } from "react-icons/fi";
 import Button from "../../common/Button";
 import Spinner from "../../common/Spinner";
 import {
   getDocumentTypeLabel,
   isTextBasedDocument,
 } from "../../../utils/contentUtils";
-import AuthenticatedMedia from "../../common/AuthenticatedMedia";
 
 /**
- * An enhanced document viewer component with better format support and fallbacks
+ * An enhanced document viewer component with better format support for both local and cloud storage
  */
-const DocumentViewer = ({ contentId, filename, mimeType, contentService }) => {
+const DocumentViewer = ({
+  contentId,
+  filename,
+  mimeType,
+  content,
+  contentService,
+}) => {
   const [docUrl, setDocUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -53,9 +58,14 @@ const DocumentViewer = ({ contentId, filename, mimeType, contentService }) => {
         const viewer = determineViewerType();
         setViewerType(viewer);
 
+        // Use file service to get the document URL - it will handle cloud vs local automatically
         if (viewer === "pdf" || viewer === "iframe" || viewer === "text") {
           const url = await contentService.fetchFileWithAuth(contentId);
-          setDocUrl(url);
+          if (url) {
+            setDocUrl(url);
+          } else {
+            throw new Error("Failed to load document");
+          }
         }
 
         setLoading(false);
@@ -70,11 +80,15 @@ const DocumentViewer = ({ contentId, filename, mimeType, contentService }) => {
 
     return () => {
       // Clean up blob URL when component unmounts
-      if (docUrl) {
+      if (docUrl && docUrl.startsWith("blob:")) {
         URL.revokeObjectURL(docUrl);
       }
     };
-  }, [contentId, mimeType, filename, contentService, docUrl]);
+  }, [contentId, mimeType, filename, contentService]);
+
+  const handleDownload = () => {
+    contentService.downloadFile(contentId, filename);
+  };
 
   if (loading) {
     return (
@@ -93,9 +107,20 @@ const DocumentViewer = ({ contentId, filename, mimeType, contentService }) => {
     case "pdf":
       return (
         <div>
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-between mb-4">
+            <div className="text-sm text-gray-500 flex items-center">
+              {content.storageLocation === "CLOUD" ? (
+                <>
+                  <FiCloud className="mr-1" /> Stored in cloud
+                </>
+              ) : (
+                <>
+                  <FiServer className="mr-1" /> Stored locally
+                </>
+              )}
+            </div>
             <Button
-              onClick={() => contentService.downloadFile(contentId, filename)}
+              onClick={handleDownload}
               variant="outline"
               className="flex items-center"
             >
@@ -107,12 +132,11 @@ const DocumentViewer = ({ contentId, filename, mimeType, contentService }) => {
             className="relative w-full border rounded"
             style={{ height: "80vh" }}
           >
-            <AuthenticatedMedia
-              contentId={contentId}
-              type="iframe"
+            <iframe
+              src={docUrl}
               className="absolute top-0 left-0 w-full h-full border-0 rounded"
-              alt={filename}
-            />
+              title={filename}
+            ></iframe>
           </div>
         </div>
       );
@@ -120,9 +144,20 @@ const DocumentViewer = ({ contentId, filename, mimeType, contentService }) => {
     case "iframe":
       return (
         <div>
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-between mb-4">
+            <div className="text-sm text-gray-500 flex items-center">
+              {content.storageLocation === "CLOUD" ? (
+                <>
+                  <FiCloud className="mr-1" /> Stored in cloud
+                </>
+              ) : (
+                <>
+                  <FiServer className="mr-1" /> Stored locally
+                </>
+              )}
+            </div>
             <Button
-              onClick={() => contentService.downloadFile(contentId, filename)}
+              onClick={handleDownload}
               variant="outline"
               className="flex items-center"
             >
@@ -146,9 +181,20 @@ const DocumentViewer = ({ contentId, filename, mimeType, contentService }) => {
     case "text":
       return (
         <div>
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-between mb-4">
+            <div className="text-sm text-gray-500 flex items-center">
+              {content.storageLocation === "CLOUD" ? (
+                <>
+                  <FiCloud className="mr-1" /> Stored in cloud
+                </>
+              ) : (
+                <>
+                  <FiServer className="mr-1" /> Stored locally
+                </>
+              )}
+            </div>
             <Button
-              onClick={() => contentService.downloadFile(contentId, filename)}
+              onClick={handleDownload}
               variant="outline"
               className="flex items-center"
             >
@@ -171,9 +217,20 @@ const DocumentViewer = ({ contentId, filename, mimeType, contentService }) => {
             <p className="mt-2 text-gray-500">
               This document type can't be previewed directly in the browser.
             </p>
+            <p className="mt-1 text-sm text-gray-500 flex items-center justify-center">
+              {content.storageLocation === "CLOUD" ? (
+                <>
+                  <FiCloud className="mr-1" /> Stored in cloud
+                </>
+              ) : (
+                <>
+                  <FiServer className="mr-1" /> Stored locally
+                </>
+              )}
+            </p>
           </div>
           <Button
-            onClick={() => contentService.downloadFile(contentId, filename)}
+            onClick={handleDownload}
             className="flex items-center mx-auto"
           >
             <FiDownload className="mr-2" />

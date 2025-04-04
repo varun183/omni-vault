@@ -123,7 +123,7 @@ export const createLinkContent = createAsyncThunk(
 export const uploadFile = createAsyncThunk(
   "content/uploadFile",
   async (
-    { file, title, description, folderId, tagIds, newTags },
+    { file, title, description, folderId, tagIds, newTags, storageLocation },
     { rejectWithValue }
   ) => {
     try {
@@ -133,7 +133,8 @@ export const uploadFile = createAsyncThunk(
         description,
         folderId,
         tagIds,
-        newTags
+        newTags,
+        storageLocation
       );
     } catch (error) {
       return rejectWithValue(

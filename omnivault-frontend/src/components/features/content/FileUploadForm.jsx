@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useDropzone } from "react-dropzone";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
-import { FiUpload, FiFile } from "react-icons/fi";
+import { FiUpload, FiFile, FiCloud, FiServer } from "react-icons/fi";
 import { uploadFile } from "../../../store/slices/contentSlice";
 import { getRootFolders } from "../../../store/slices/folderSlice";
 import { getAllTags } from "../../../store/slices/tagSlice";
@@ -30,10 +30,27 @@ const FileUploadForm = ({ isOpen, onClose }) => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [newTagInput, setNewTagInput] = useState("");
   const [newTags, setNewTags] = useState([]);
+  const [storageLocation, setStorageLocation] = useState("LOCAL");
+  const [isCloudEnabled, setIsCloudEnabled] = useState(false);
 
   useEffect(() => {
     dispatch(getRootFolders());
     dispatch(getAllTags());
+
+    // Check if cloud storage is enabled
+    // In a real app, you'd fetch this from your API
+    const checkCloudStorageStatus = async () => {
+      try {
+        // This could be an API call to check status
+        // For now, we'll just simulate it
+        setIsCloudEnabled(true);
+      } catch (error) {
+        console.error("Error checking cloud storage status:", error);
+        setIsCloudEnabled(false);
+      }
+    };
+
+    checkCloudStorageStatus();
   }, [dispatch]);
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -62,6 +79,7 @@ const FileUploadForm = ({ isOpen, onClose }) => {
       folderId: values.folderId || null,
       tagIds: selectedTags,
       newTags,
+      storageLocation,
     };
 
     dispatch(uploadFile(formData))
@@ -75,6 +93,7 @@ const FileUploadForm = ({ isOpen, onClose }) => {
         setSelectedFile(null);
         setSelectedTags([]);
         setNewTags([]);
+        setStorageLocation("LOCAL");
       })
       .catch((error) => {
         console.error("Failed to upload file:", error);
@@ -105,7 +124,30 @@ const FileUploadForm = ({ isOpen, onClose }) => {
     setSelectedFile(null);
     setSelectedTags([]);
     setNewTags([]);
+    setStorageLocation("LOCAL");
     onClose();
+  };
+
+  const getStorageInfo = () => {
+    if (storageLocation === "CLOUD") {
+      return (
+        <div className="text-sm text-blue-600">
+          <span className="flex items-center mt-1">
+            <FiCloud className="mr-1" />
+            Files stored in cloud are accessible from any device
+          </span>
+        </div>
+      );
+    } else {
+      return (
+        <div className="text-sm text-gray-600">
+          <span className="flex items-center mt-1">
+            <FiServer className="mr-1" />
+            Files stored locally are only accessible on this server
+          </span>
+        </div>
+      );
+    }
   };
 
   return (
@@ -157,6 +199,42 @@ const FileUploadForm = ({ isOpen, onClose }) => {
                 )}
               </div>
             </div>
+
+            {/* Storage Location Selection */}
+            {isCloudEnabled && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Storage Location
+                </label>
+                <div className="flex gap-4 mt-1">
+                  <button
+                    type="button"
+                    className={`flex items-center justify-center px-4 py-2 border rounded-md ${
+                      storageLocation === "LOCAL"
+                        ? "bg-gray-100 border-gray-300 text-gray-800"
+                        : "bg-white border-gray-300 text-gray-500"
+                    }`}
+                    onClick={() => setStorageLocation("LOCAL")}
+                  >
+                    <FiServer className="mr-2" />
+                    Local Storage
+                  </button>
+                  <button
+                    type="button"
+                    className={`flex items-center justify-center px-4 py-2 border rounded-md ${
+                      storageLocation === "CLOUD"
+                        ? "bg-blue-50 border-blue-300 text-blue-700"
+                        : "bg-white border-gray-300 text-gray-500"
+                    }`}
+                    onClick={() => setStorageLocation("CLOUD")}
+                  >
+                    <FiCloud className="mr-2" />
+                    Cloud Storage
+                  </button>
+                </div>
+                {getStorageInfo()}
+              </div>
+            )}
 
             <Input
               label="Title (optional)"
