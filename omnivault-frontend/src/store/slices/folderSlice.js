@@ -1,5 +1,16 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import folderService from "../../services/folderService";
+import logger from "../../services/loggerService";
+
+const handleAsyncError = (
+  error,
+  rejectWithValue,
+  customMessage,
+  context = {}
+) => {
+  logger.error(customMessage, error, context);
+  return rejectWithValue(error.response?.data?.message || customMessage);
+};
 
 export const getRootFolders = createAsyncThunk(
   "folders/getRootFolders",
@@ -7,9 +18,7 @@ export const getRootFolders = createAsyncThunk(
     try {
       return await folderService.getRootFolders();
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to get folders"
-      );
+      return handleAsyncError(error, rejectWithValue, "Failed to get folders");
     }
   }
 );
@@ -20,9 +29,9 @@ export const getFolder = createAsyncThunk(
     try {
       return await folderService.getFolder(folderId);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to get folder"
-      );
+      return handleAsyncError(error, rejectWithValue, "Failed to get folder", {
+        folderId,
+      });
     }
   }
 );
@@ -33,8 +42,11 @@ export const createFolder = createAsyncThunk(
     try {
       return await folderService.createFolder(folderData);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to create folder"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to create folder",
+        { folderData }
       );
     }
   }
@@ -46,8 +58,11 @@ export const updateFolder = createAsyncThunk(
     try {
       return await folderService.updateFolder(folderId, folderData);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to update folder"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to update folder",
+        { folderId, folderData }
       );
     }
   }
@@ -60,8 +75,11 @@ export const deleteFolder = createAsyncThunk(
       await folderService.deleteFolder(folderId);
       return folderId;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to delete folder"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to delete folder",
+        { folderId }
       );
     }
   }
@@ -99,6 +117,7 @@ const folderSlice = createSlice({
       .addCase(getRootFolders.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        logger.error("Failed to load root folders", action.payload);
       })
 
       // Get Folder
@@ -113,6 +132,7 @@ const folderSlice = createSlice({
       .addCase(getFolder.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        logger.error("Failed to load folder", action.payload);
       })
 
       // Create Folder
@@ -123,7 +143,9 @@ const folderSlice = createSlice({
           state.currentFolder &&
           state.currentFolder.id === action.payload.parentId
         ) {
-          state.currentFolder.subfolders = state.currentFolder.subfolders || [];
+          if (!state.currentFolder.subfolders) {
+            state.currentFolder.subfolders = [];
+          }
           state.currentFolder.subfolders.push(action.payload);
         }
       })

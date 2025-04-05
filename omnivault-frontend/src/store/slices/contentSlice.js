@@ -1,6 +1,17 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import contentService from "../../services/contentService";
 import { apiCache } from "../../utils/apiCache";
+import logger from "../../services/loggerService";
+
+const handleAsyncError = (
+  error,
+  rejectWithValue,
+  customMessage,
+  context = {}
+) => {
+  logger.error(customMessage, error, context);
+  return rejectWithValue(error.response?.data?.message || customMessage);
+};
 
 export const getAllContent = createAsyncThunk(
   "content/getAllContent",
@@ -8,9 +19,10 @@ export const getAllContent = createAsyncThunk(
     try {
       return await contentService.getAllContent(page, size);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to get content"
-      );
+      return handleAsyncError(error, rejectWithValue, "Failed to get content", {
+        page,
+        size,
+      });
     }
   }
 );
@@ -21,9 +33,9 @@ export const getContent = createAsyncThunk(
     try {
       return await contentService.getContent(contentId);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to get content"
-      );
+      return handleAsyncError(error, rejectWithValue, "Failed to get content", {
+        contentId,
+      });
     }
   }
 );
@@ -34,8 +46,11 @@ export const getFolderContent = createAsyncThunk(
     try {
       return await contentService.getFolderContent(folderId, page, size);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to get folder content"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to get folder content",
+        { folderId, page, size }
       );
     }
   }
@@ -47,8 +62,11 @@ export const getContentByType = createAsyncThunk(
     try {
       return await contentService.getContentByType(contentType, page, size);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || `Failed to get ${contentType} content`
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        `Failed to get ${contentType} content`,
+        { contentType, page, size }
       );
     }
   }
@@ -58,11 +76,13 @@ export const getContentByTag = createAsyncThunk(
   "content/getContentByTag",
   async ({ tagId, page, size }, { rejectWithValue }) => {
     try {
-      const response = await contentService.getContentByTag(tagId, page, size);
-      return response;
+      return await contentService.getContentByTag(tagId, page, size);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to get content for tag"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to get content for tag",
+        { tagId, page, size }
       );
     }
   }
@@ -74,8 +94,11 @@ export const getFavoriteContent = createAsyncThunk(
     try {
       return await contentService.getFavorites(page, size);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to get favorite content"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to get favorite content",
+        { page, size }
       );
     }
   }
@@ -87,8 +110,11 @@ export const getRecentContent = createAsyncThunk(
     try {
       return await contentService.getRecent(page, size);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to get recent content"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to get recent content",
+        { page, size }
       );
     }
   }
@@ -100,8 +126,11 @@ export const createTextContent = createAsyncThunk(
     try {
       return await contentService.createTextContent(contentData);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to create text content"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to create text content",
+        { contentData }
       );
     }
   }
@@ -113,8 +142,11 @@ export const createLinkContent = createAsyncThunk(
     try {
       return await contentService.createLinkContent(contentData);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to create link content"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to create link content",
+        { contentData }
       );
     }
   }
@@ -137,9 +169,13 @@ export const uploadFile = createAsyncThunk(
         storageLocation
       );
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to upload file"
-      );
+      return handleAsyncError(error, rejectWithValue, "Failed to upload file", {
+        title,
+        description,
+        folderId,
+        tagIds,
+        storageLocation,
+      });
     }
   }
 );
@@ -148,15 +184,15 @@ export const updateContent = createAsyncThunk(
   "content/updateContent",
   async ({ contentId, contentData }, { rejectWithValue }) => {
     try {
-      // Clear cache for this content
       apiCache.remove(`content_${contentId}`);
-      // Also clear any cache that might include this content
       apiCache.clear("thumbnails_");
-
       return await contentService.updateContent(contentId, contentData);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to update content"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to update content",
+        { contentId, contentData }
       );
     }
   }
@@ -168,8 +204,11 @@ export const toggleFavorite = createAsyncThunk(
     try {
       return await contentService.toggleFavorite(contentId);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to toggle favorite"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to toggle favorite",
+        { contentId }
       );
     }
   }
@@ -182,8 +221,11 @@ export const deleteContent = createAsyncThunk(
       await contentService.deleteContent(contentId);
       return contentId;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to delete content"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to delete content",
+        { contentId }
       );
     }
   }
@@ -195,8 +237,11 @@ export const searchContent = createAsyncThunk(
     try {
       return await contentService.searchContent(query, page, size);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to search content"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to search content",
+        { query, page, size }
       );
     }
   }

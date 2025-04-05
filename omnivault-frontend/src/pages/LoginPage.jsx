@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { login, clearError } from "../store/slices/authSlice";
+import logger from "../services/loggerService";
+import { apiCache } from "../utils/apiCache";
 import AuthLayout from "../components/layout/AuthLayout";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
 import Alert from "../components/common/Alert";
 import Spinner from "../components/common/Spinner";
-import { apiCache } from "../utils/apiCache";
 
 const LoginSchema = Yup.object().shape({
   usernameOrEmail: Yup.string().required("Username or email is required"),
@@ -18,35 +19,65 @@ const LoginSchema = Yup.object().shape({
 
 const LoginPage = () => {
   const dispatch = useDispatch();
-  const { loading, error } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
+  const { error } = useSelector((state) => state.auth);
   const [showError, setShowError] = useState(false);
-  const [searchParams] = useSearchParams();
-  const [showVerifiedMessage, setShowVerifiedMessage] = useState(false);
 
   useEffect(() => {
-    apiCache.clearAll(); // Clear ALL cache, regardless of user
+    // Clear any existing API cache
+    apiCache.clearAll();
+
+    // Log page visit
+    logger.info("Login page accessed");
   }, []);
 
   useEffect(() => {
     if (error) {
       setShowError(true);
+
+      // Log login error with context
+      logger.error("Login attempt failed", error, {
+        errorType: "AuthenticationError",
+      });
     }
   }, [error]);
-
-  useEffect(() => {
-    if (searchParams.get("verified") === "true") {
-      setShowVerifiedMessage(true);
-    }
-  }, [searchParams]);
 
   const handleCloseError = () => {
     setShowError(false);
     dispatch(clearError());
+
+    // Log error dismissal
+    logger.info("Login error alert dismissed");
   };
 
-  const handleSubmit = (values) => {
-    apiCache.clearAll();
-    dispatch(login(values));
+  const handleSubmit = async (values, { setSubmitting }) => {
+    try {
+      // Log login attempt
+      logger.info("Login attempt initiated", {
+        usernameOrEmail: values.usernameOrEmail,
+      });
+
+      // Clear any existing cache before login
+      apiCache.clearAll();
+
+      // Use logAsyncError to handle potential login failures
+      await logger.logAsyncError(
+        dispatch(login(values)).unwrap(),
+        "Login failed",
+        { usernameOrEmail: values.usernameOrEmail }
+      );
+
+      // Log successful login
+      logger.info("User logged in successfully", {
+        usernameOrEmail: values.usernameOrEmail,
+      });
+
+      // Navigate to home page after successful login
+      navigate("/");
+    } catch (error) {
+      // Error is already logged by logAsyncError
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -54,15 +85,6 @@ const LoginPage = () => {
       <h2 className="text-2xl font-bold text-center mb-6">
         Sign in to your account
       </h2>
-
-      {showVerifiedMessage && (
-        <Alert
-          type="success"
-          message="Your email has been verified! You can now log in."
-          className="mb-4"
-          onClose={() => setShowVerifiedMessage(false)}
-        />
-      )}
 
       {showError && (
         <Alert
@@ -78,7 +100,14 @@ const LoginPage = () => {
         validationSchema={LoginSchema}
         onSubmit={handleSubmit}
       >
-        {({ values, errors, touched, handleChange, handleBlur }) => (
+        {({
+          values,
+          errors,
+          touched,
+          handleChange,
+          handleBlur,
+          isSubmitting,
+        }) => (
           <Form>
             <Input
               label="Username or Email"
@@ -109,9 +138,9 @@ const LoginPage = () => {
                 type="submit"
                 variant="primary"
                 fullWidth
-                disabled={loading}
+                disabled={isSubmitting}
               >
-                {loading ? <Spinner size="sm" className="mr-2" /> : null}
+                {isSubmitting ? <Spinner size="sm" className="mr-2" /> : null}
                 Sign in
               </Button>
             </div>
@@ -125,6 +154,7 @@ const LoginPage = () => {
           <Link
             to="/register"
             className="text-primary-600 hover:text-primary-500"
+            onClick={() => logger.info("Navigating to registration page")}
           >
             Sign up
           </Link>

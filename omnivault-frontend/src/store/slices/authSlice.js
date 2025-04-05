@@ -1,19 +1,31 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import authService from "../../services/authService";
 import { apiCache } from "../../utils/apiCache";
+import logger from "../../services/loggerService";
+
+const handleAsyncError = (
+  error,
+  rejectWithValue,
+  customMessage,
+  context = {}
+) => {
+  logger.error(customMessage, error, context);
+  return rejectWithValue(error.response?.data?.message || customMessage);
+};
 
 export const login = createAsyncThunk(
   "auth/login",
   async ({ usernameOrEmail, password }, { rejectWithValue }) => {
     try {
       apiCache.clear();
-
       const data = await authService.login(usernameOrEmail, password);
       localStorage.setItem("access_token", data.accessToken);
       localStorage.setItem("refresh_token", data.refreshToken);
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Login failed");
+      return handleAsyncError(error, rejectWithValue, "Login failed", {
+        usernameOrEmail,
+      });
     }
   }
 );
@@ -23,16 +35,14 @@ export const register = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       apiCache.clear();
-
       const data = await authService.register(userData);
       localStorage.setItem("access_token", data.accessToken);
       localStorage.setItem("refresh_token", data.refreshToken);
-      console.log("Registered user", data);
       return data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Registration failed"
-      );
+      return handleAsyncError(error, rejectWithValue, "Registration failed", {
+        userData,
+      });
     }
   }
 );
@@ -42,12 +52,10 @@ export const logout = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       await authService.logout();
-
       apiCache.clear();
-
       return null;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Logout failed");
+      return handleAsyncError(error, rejectWithValue, "Logout failed");
     }
   }
 );
@@ -58,9 +66,7 @@ export const getCurrentUser = createAsyncThunk(
     try {
       return await authService.getCurrentUser();
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to get user"
-      );
+      return handleAsyncError(error, rejectWithValue, "Failed to get user");
     }
   }
 );
@@ -69,11 +75,13 @@ export const verifyEmail = createAsyncThunk(
   "auth/verifyEmail",
   async (token, { rejectWithValue }) => {
     try {
-      const response = await authService.verifyEmail(token);
-      return response;
+      return await authService.verifyEmail(token);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Verification failed"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Email verification failed",
+        { token }
       );
     }
   }
@@ -83,11 +91,13 @@ export const verifyEmailWithOTP = createAsyncThunk(
   "auth/verifyEmailWithOTP",
   async ({ email, otpCode }, { rejectWithValue }) => {
     try {
-      const response = await authService.verifyEmailWithOTP(email, otpCode);
-      return response;
+      return await authService.verifyEmailWithOTP(email, otpCode);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "OTP verification failed"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "OTP verification failed",
+        { email }
       );
     }
   }
@@ -97,11 +107,13 @@ export const resendVerificationEmail = createAsyncThunk(
   "auth/resendVerificationEmail",
   async (email, { rejectWithValue }) => {
     try {
-      const response = await authService.resendVerificationEmail(email);
-      return response;
+      return await authService.resendVerificationEmail(email);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to resend verification email"
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to resend verification email",
+        { email }
       );
     }
   }

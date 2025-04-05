@@ -7,6 +7,7 @@ import { FiUpload, FiFile, FiCloud, FiServer } from "react-icons/fi";
 import { uploadFile } from "../../../store/slices/contentSlice";
 import { getRootFolders } from "../../../store/slices/folderSlice";
 import { getAllTags } from "../../../store/slices/tagSlice";
+import logger from "../../../services/loggerService";
 import Modal from "../../common/Modal";
 import Input from "../../common/Input";
 import TextArea from "../../common/TextArea";
@@ -14,11 +15,12 @@ import Button from "../../common/Button";
 import Spinner from "../../common/Spinner";
 
 const FileUploadSchema = Yup.object().shape({
-  title: Yup.string().max(255, "Title must be less than 255 characters"),
-  description: Yup.string().max(
-    500,
-    "Description must be less than 500 characters"
-  ),
+  title: Yup.string()
+    .max(255, "Title must be less than 255 characters")
+    .optional(),
+  description: Yup.string()
+    .max(500, "Description must be less than 500 characters")
+    .optional(),
 });
 
 const FileUploadForm = ({ isOpen, onClose }) => {
@@ -26,6 +28,7 @@ const FileUploadForm = ({ isOpen, onClose }) => {
   const { rootFolders } = useSelector((state) => state.folders);
   const { tags, loading: tagsLoading } = useSelector((state) => state.tags);
   const { loading: contentLoading } = useSelector((state) => state.content);
+
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedTags, setSelectedTags] = useState([]);
   const [newTagInput, setNewTagInput] = useState("");
@@ -33,42 +36,83 @@ const FileUploadForm = ({ isOpen, onClose }) => {
   const [storageLocation, setStorageLocation] = useState("LOCAL");
   const [isCloudEnabled, setIsCloudEnabled] = useState(false);
 
+  // Initial data loading
   useEffect(() => {
-    dispatch(getRootFolders());
-    dispatch(getAllTags());
-
-    // Check if cloud storage is enabled
-    // In a real app, you'd fetch this from your API
-    const checkCloudStorageStatus = async () => {
+    const loadInitialData = async () => {
       try {
-        // This could be an API call to check status
-        // For now, we'll just simulate it
-        setIsCloudEnabled(true);
+        logger.info("Loading initial upload form data");
+        await Promise.all([
+          dispatch(getRootFolders()),
+          dispatch(getAllTags()),
+          checkCloudStorageStatus(),
+        ]);
       } catch (error) {
-        console.error("Error checking cloud storage status:", error);
-        setIsCloudEnabled(false);
+        logger.error("Failed to load initial upload form data", error);
       }
     };
 
-    checkCloudStorageStatus();
-  }, [dispatch]);
+    if (isOpen) {
+      loadInitialData();
+    }
+  }, [dispatch, isOpen]);
 
+  // Cloud storage status check
+  const checkCloudStorageStatus = async () => {
+    try {
+      // This could be an API call to check status
+      // For now, we'll just simulate it
+      setIsCloudEnabled(true);
+    } catch (error) {
+      console.error("Error checking cloud storage status:", error);
+      setIsCloudEnabled(false);
+    }
+  };
+
+  // Dropzone file selection
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 0) {
-      setSelectedFile(acceptedFiles[0]);
+      const file = acceptedFiles[0];
+      logger.info("File selected for upload", {
+        fileName: file.name,
+        fileSize: file.size,
+      });
+      setSelectedFile(file);
     }
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    maxSize: 100 * 1024 * 1024, // 100MB max file size
+  });
 
-  const initialValues = {
-    title: "",
-    description: "",
-    folderId: "",
+  // Tag handling methods
+  const handleTagToggle = (tagId) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId]
+    );
   };
 
-  const handleSubmit = (values) => {
+  const handleAddNewTag = (e) => {
+    e.preventDefault();
+    const trimmedTag = newTagInput.trim();
+    if (trimmedTag && !newTags.includes(trimmedTag)) {
+      logger.info("New tag added", { tagName: trimmedTag });
+      setNewTags([...newTags, trimmedTag]);
+      setNewTagInput("");
+    }
+  };
+
+  const handleRemoveNewTag = (tag) => {
+    logger.info("Removing new tag", { tagName: tag });
+    setNewTags(newTags.filter((t) => t !== tag));
+  };
+
+  // Form submission handler
+  const handleSubmit = async (values, { setSubmitting }) => {
     if (!selectedFile) {
+      logger.warn("No file selected for upload");
       return;
     }
 
@@ -82,78 +126,60 @@ const FileUploadForm = ({ isOpen, onClose }) => {
       storageLocation,
     };
 
-    dispatch(uploadFile(formData))
-      .unwrap()
-      .then(() => {
-        // Add tag refresh
-        if (newTags.length > 0) {
-          dispatch(getAllTags());
-        }
-        onClose();
-        setSelectedFile(null);
-        setSelectedTags([]);
-        setNewTags([]);
-        setStorageLocation("LOCAL");
-      })
-      .catch((error) => {
-        console.error("Failed to upload file:", error);
+    try {
+      logger.info("Attempting file upload", {
+        fileName: selectedFile.name,
+        storageLocation,
       });
-  };
 
-  const handleTagToggle = (tagId) => {
-    setSelectedTags((prev) =>
-      prev.includes(tagId)
-        ? prev.filter((id) => id !== tagId)
-        : [...prev, tagId]
-    );
-  };
+      await logger.logAsyncError(
+        dispatch(uploadFile(formData)).unwrap(),
+        "File upload failed"
+      );
 
-  const handleAddNewTag = (e) => {
-    e.preventDefault();
-    if (newTagInput.trim() && !newTags.includes(newTagInput.trim())) {
-      setNewTags([...newTags, newTagInput.trim()]);
-      setNewTagInput("");
+      // Refresh tags if new tags were added
+      if (newTags.length > 0) {
+        await dispatch(getAllTags());
+      }
+
+      // Reset form state
+      logger.info("File upload successful", { fileName: selectedFile.name });
+      onClose();
+      resetForm();
+    } catch (error) {
+      // Error is already logged by logAsyncError
+      setSubmitting(false);
     }
   };
 
-  const handleRemoveNewTag = (tag) => {
-    setNewTags(newTags.filter((t) => t !== tag));
-  };
-
-  const handleClose = () => {
+  // Form reset method
+  const resetForm = () => {
     setSelectedFile(null);
     setSelectedTags([]);
     setNewTags([]);
     setStorageLocation("LOCAL");
-    onClose();
+    setNewTagInput("");
   };
 
-  const getStorageInfo = () => {
-    if (storageLocation === "CLOUD") {
-      return (
-        <div className="text-sm text-blue-600">
-          <span className="flex items-center mt-1">
-            <FiCloud className="mr-1" />
-            Files stored in cloud are accessible from any device
-          </span>
-        </div>
-      );
-    } else {
-      return (
-        <div className="text-sm text-gray-600">
-          <span className="flex items-center mt-1">
-            <FiServer className="mr-1" />
-            Files stored locally are only accessible on this server
-          </span>
-        </div>
-      );
-    }
+  // Close handler with logging
+  const handleClose = () => {
+    logger.info("File upload form closed", {
+      fileSelected: !!selectedFile,
+      tagCount: selectedTags.length,
+      newTagCount: newTags.length,
+    });
+    resetForm();
+    onClose();
   };
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Upload File" size="lg">
       <Formik
-        initialValues={initialValues}
+        initialValues={{
+          title: "",
+          description: "",
+          folderId: "",
+        }}
         validationSchema={FileUploadSchema}
         onSubmit={handleSubmit}
       >
@@ -166,6 +192,7 @@ const FileUploadForm = ({ isOpen, onClose }) => {
           isSubmitting,
         }) => (
           <Form>
+            {/* File Dropzone */}
             <div className="mb-4">
               <div
                 {...getRootProps()}
@@ -214,7 +241,12 @@ const FileUploadForm = ({ isOpen, onClose }) => {
                         ? "bg-gray-100 border-gray-300 text-gray-800"
                         : "bg-white border-gray-300 text-gray-500"
                     }`}
-                    onClick={() => setStorageLocation("LOCAL")}
+                    onClick={() => {
+                      logger.info("Selected local storage", {
+                        previousLocation: storageLocation,
+                      });
+                      setStorageLocation("LOCAL");
+                    }}
                   >
                     <FiServer className="mr-2" />
                     Local Storage
@@ -226,16 +258,21 @@ const FileUploadForm = ({ isOpen, onClose }) => {
                         ? "bg-blue-50 border-blue-300 text-blue-700"
                         : "bg-white border-gray-300 text-gray-500"
                     }`}
-                    onClick={() => setStorageLocation("CLOUD")}
+                    onClick={() => {
+                      logger.info("Selected cloud storage", {
+                        previousLocation: storageLocation,
+                      });
+                      setStorageLocation("CLOUD");
+                    }}
                   >
                     <FiCloud className="mr-2" />
                     Cloud Storage
                   </button>
                 </div>
-                {getStorageInfo()}
               </div>
             )}
 
+            {/* Title Input */}
             <Input
               label="Title (optional)"
               id="title"
@@ -247,6 +284,7 @@ const FileUploadForm = ({ isOpen, onClose }) => {
               error={touched.title && errors.title}
             />
 
+            {/* Folder Selection */}
             <div className="mb-4">
               <label
                 htmlFor="folderId"
@@ -271,6 +309,7 @@ const FileUploadForm = ({ isOpen, onClose }) => {
               </select>
             </div>
 
+            {/* Description Input */}
             <TextArea
               label="Description (optional)"
               id="description"
@@ -281,6 +320,7 @@ const FileUploadForm = ({ isOpen, onClose }) => {
               error={touched.description && errors.description}
             />
 
+            {/* Tag Selection */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tags (optional)
@@ -306,6 +346,7 @@ const FileUploadForm = ({ isOpen, onClose }) => {
                 )}
               </div>
 
+              {/* New Tag Input */}
               <div className="flex items-center mt-2">
                 <Input
                   placeholder="Add new tag"
@@ -323,6 +364,7 @@ const FileUploadForm = ({ isOpen, onClose }) => {
                 </Button>
               </div>
 
+              {/* New Tags Display */}
               {newTags.length > 0 && (
                 <div className="mt-2">
                   <p className="text-sm text-gray-500 mb-1">New tags:</p>
@@ -347,6 +389,7 @@ const FileUploadForm = ({ isOpen, onClose }) => {
               )}
             </div>
 
+            {/* Submit Buttons */}
             <div className="mt-6 flex justify-end space-x-2">
               <Button type="button" variant="secondary" onClick={handleClose}>
                 Cancel

@@ -1,5 +1,16 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import tagService from "../../services/tagService";
+import logger from "../../services/loggerService";
+
+const handleAsyncError = (
+  error,
+  rejectWithValue,
+  customMessage,
+  context = {}
+) => {
+  logger.error(customMessage, error, context);
+  return rejectWithValue(error.response?.data?.message || customMessage);
+};
 
 export const getAllTags = createAsyncThunk(
   "tags/getAllTags",
@@ -7,9 +18,7 @@ export const getAllTags = createAsyncThunk(
     try {
       return await tagService.getAllTags();
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to get tags"
-      );
+      return handleAsyncError(error, rejectWithValue, "Failed to get tags");
     }
   }
 );
@@ -20,9 +29,9 @@ export const getTag = createAsyncThunk(
     try {
       return await tagService.getTag(tagId);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to get tag"
-      );
+      return handleAsyncError(error, rejectWithValue, "Failed to get tag", {
+        tagId,
+      });
     }
   }
 );
@@ -33,9 +42,9 @@ export const createTag = createAsyncThunk(
     try {
       return await tagService.createTag(tagData);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to create tag"
-      );
+      return handleAsyncError(error, rejectWithValue, "Failed to create tag", {
+        tagData,
+      });
     }
   }
 );
@@ -46,9 +55,10 @@ export const updateTag = createAsyncThunk(
     try {
       return await tagService.updateTag(tagId, tagData);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to update tag"
-      );
+      return handleAsyncError(error, rejectWithValue, "Failed to update tag", {
+        tagId,
+        tagData,
+      });
     }
   }
 );
@@ -60,9 +70,9 @@ export const deleteTag = createAsyncThunk(
       await tagService.deleteTag(tagId);
       return tagId;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to delete tag"
-      );
+      return handleAsyncError(error, rejectWithValue, "Failed to delete tag", {
+        tagId,
+      });
     }
   }
 );
@@ -73,9 +83,9 @@ export const searchTags = createAsyncThunk(
     try {
       return await tagService.searchTags(query);
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to search tags"
-      );
+      return handleAsyncError(error, rejectWithValue, "Failed to search tags", {
+        query,
+      });
     }
   }
 );
@@ -116,6 +126,7 @@ const tagSlice = createSlice({
       .addCase(getAllTags.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        logger.error("Failed to load all tags", action.payload);
       })
 
       // Get Tag
@@ -130,6 +141,7 @@ const tagSlice = createSlice({
       .addCase(getTag.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        logger.error("Failed to load tag", action.payload);
       })
 
       // Create Tag
@@ -169,6 +181,7 @@ const tagSlice = createSlice({
       .addCase(searchTags.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        logger.error("Failed to search tags", action.payload);
       });
   },
 });

@@ -8,6 +8,7 @@ import {
   toggleFavorite,
   deleteContent,
 } from "../store/slices/contentSlice";
+import logger from "../services/loggerService";
 import Layout from "../components/layout/Layout";
 import Button from "../components/common/Button";
 import TextContentForm from "../components/features/content/TextContentForm";
@@ -25,25 +26,94 @@ const ContentDetailPage = () => {
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
+    // Log content detail page access
+    logger.info("Content detail page accessed", { contentId });
+
     if (contentId) {
-      dispatch(getContent(contentId));
+      // Track content retrieval
+      dispatch(getContent(contentId))
+        .unwrap()
+        .then((content) => {
+          logger.info("Content retrieved successfully", {
+            contentId,
+            contentType: content.contentType,
+          });
+        })
+        .catch((error) => {
+          logger.error("Failed to retrieve content", error, { contentId });
+        });
     }
   }, [dispatch, contentId]);
 
   const handleToggleFavorite = () => {
-    dispatch(toggleFavorite(contentId));
+    try {
+      logger.info("Toggling favorite status", { contentId });
+
+      dispatch(toggleFavorite(contentId))
+        .unwrap()
+        .then((updatedContent) => {
+          logger.info("Favorite status updated", {
+            contentId,
+            isFavorite: updatedContent.favorite,
+          });
+        })
+        .catch((error) => {
+          logger.error("Failed to toggle favorite", error, { contentId });
+        });
+    } catch (error) {
+      logger.error("Unexpected error toggling favorite", error, { contentId });
+    }
   };
 
   const handleDelete = () => {
-    if (window.confirm("Are you sure you want to delete this content?")) {
-      dispatch(deleteContent(contentId))
-        .unwrap()
-        .then(() => {
-          navigate("/");
-        })
-        .catch((error) => {
-          console.error("Failed to delete content:", error);
-        });
+    try {
+      const confirmDelete = window.confirm(
+        "Are you sure you want to delete this content?"
+      );
+
+      if (confirmDelete) {
+        logger.info("Attempting to delete content", { contentId });
+
+        dispatch(deleteContent(contentId))
+          .unwrap()
+          .then(() => {
+            logger.info("Content deleted successfully", { contentId });
+            navigate("/");
+          })
+          .catch((error) => {
+            logger.error("Failed to delete content", error, { contentId });
+          });
+      } else {
+        logger.info("Content deletion cancelled", { contentId });
+      }
+    } catch (error) {
+      logger.error("Unexpected error during content deletion", error, {
+        contentId,
+      });
+    }
+  };
+
+  const handleEditStart = () => {
+    try {
+      logger.info("Entering edit mode", {
+        contentId,
+        contentType: currentContent?.contentType,
+      });
+      setIsEditMode(true);
+    } catch (error) {
+      logger.error("Error entering edit mode", error, { contentId });
+    }
+  };
+
+  const handleEditClose = () => {
+    try {
+      logger.info("Exiting edit mode", {
+        contentId,
+        contentType: currentContent?.contentType,
+      });
+      setIsEditMode(false);
+    } catch (error) {
+      logger.error("Error exiting edit mode", error, { contentId });
     }
   };
 
@@ -58,6 +128,11 @@ const ContentDetailPage = () => {
   }
 
   if (error || !currentContent) {
+    logger.warn("Content not found or access denied", {
+      contentId,
+      error,
+    });
+
     return (
       <Layout>
         <div className="text-center py-12">
@@ -69,7 +144,13 @@ const ContentDetailPage = () => {
             permission to view it.
           </p>
           <div className="mt-6">
-            <Link to="/" className="text-primary-600 hover:text-primary-500">
+            <Link
+              to="/"
+              className="text-primary-600 hover:text-primary-500"
+              onClick={() =>
+                logger.info("Navigating to home from content not found")
+              }
+            >
               Go back to home
             </Link>
           </div>
@@ -84,7 +165,10 @@ const ContentDetailPage = () => {
         <Button
           variant="ghost"
           className="flex items-center text-gray-600"
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            logger.info("Navigating back from content detail");
+            navigate(-1);
+          }}
         >
           <FiArrowLeft className="mr-1" />
           Back
@@ -112,7 +196,7 @@ const ContentDetailPage = () => {
             <Button
               variant="ghost"
               className="text-gray-400 hover:text-primary-500"
-              onClick={() => setIsEditMode(true)}
+              onClick={handleEditStart}
             >
               <FiEdit />
             </Button>
@@ -141,6 +225,11 @@ const ContentDetailPage = () => {
               <Link
                 to={`/folder/${currentContent.folderId}`}
                 className="hover:text-primary-600"
+                onClick={() =>
+                  logger.info("Navigating to folder", {
+                    folderId: currentContent.folderId,
+                  })
+                }
               >
                 {currentContent.folderName}
               </Link>
@@ -158,6 +247,12 @@ const ContentDetailPage = () => {
                     backgroundColor: `${tag.color}25`,
                     color: tag.color,
                   }}
+                  onClick={() =>
+                    logger.info("Navigating to tag", {
+                      tagId: tag.id,
+                      tagName: tag.name,
+                    })
+                  }
                 >
                   {tag.name}
                 </Link>
@@ -172,7 +267,7 @@ const ContentDetailPage = () => {
       {isEditMode && currentContent.contentType === "TEXT" && (
         <TextContentForm
           isOpen={isEditMode}
-          onClose={() => setIsEditMode(false)}
+          onClose={handleEditClose}
           content={currentContent}
         />
       )}
@@ -180,7 +275,7 @@ const ContentDetailPage = () => {
       {isEditMode && currentContent.contentType === "LINK" && (
         <LinkContentForm
           isOpen={isEditMode}
-          onClose={() => setIsEditMode(false)}
+          onClose={handleEditClose}
           content={currentContent}
         />
       )}

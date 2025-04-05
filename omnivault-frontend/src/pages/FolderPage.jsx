@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { FiEdit, FiTrash, FiPlus, FiArrowLeft, FiFolder } from "react-icons/fi";
 import { getFolder, deleteFolder } from "../store/slices/folderSlice";
 import { getFolderContent } from "../store/slices/contentSlice";
+import logger from "../services/loggerService";
 import Layout from "../components/layout/Layout";
 import ContentCard from "../components/features/content/ContentCard";
 import Button from "../components/common/Button";
@@ -25,6 +26,7 @@ const FolderPage = () => {
     loading: contentLoading,
     totalPages,
   } = useSelector((state) => state.content);
+
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedContent, setSelectedContent] = useState(null);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
@@ -34,46 +36,114 @@ const FolderPage = () => {
   const [isFileUploadOpen, setIsFileUploadOpen] = useState(false);
 
   useEffect(() => {
+    // Log folder page access
+    logger.info("Folder page accessed", { folderId });
+
     if (folderId) {
-      dispatch(getFolder(folderId));
-      dispatch(getFolderContent({ folderId, page: currentPage, size: 12 }));
+      // Track folder and content retrieval
+      Promise.all([
+        dispatch(getFolder(folderId))
+          .unwrap()
+          .then((folder) => {
+            logger.info("Folder retrieved successfully", {
+              folderId,
+              folderName: folder.name,
+            });
+          }),
+        dispatch(
+          getFolderContent({
+            folderId,
+            page: currentPage,
+            size: 12,
+          })
+        )
+          .unwrap()
+          .then((content) => {
+            logger.info("Folder content retrieved", {
+              folderId,
+              contentCount: content.content.length,
+            });
+          }),
+      ]).catch((error) => {
+        logger.error("Failed to retrieve folder or content", error, {
+          folderId,
+        });
+      });
     }
   }, [dispatch, folderId, currentPage]);
 
   const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
+    try {
+      logger.info("Changing folder content page", {
+        folderId,
+        currentPage: newPage,
+      });
+      setCurrentPage(newPage);
+    } catch (error) {
+      logger.error("Error changing page", error, {
+        folderId,
+        newPage,
+      });
+    }
   };
 
   const handleEditFolder = () => {
-    setIsFolderModalOpen(true);
+    try {
+      logger.info("Opening folder edit modal", { folderId });
+      setIsFolderModalOpen(true);
+    } catch (error) {
+      logger.error("Error opening folder edit modal", error, { folderId });
+    }
   };
 
   const handleDeleteFolder = () => {
-    if (
-      window.confirm(
+    try {
+      const confirmDelete = window.confirm(
         "Are you sure you want to delete this folder? All contents will be preserved but moved to root."
-      )
-    ) {
-      dispatch(deleteFolder(folderId))
-        .unwrap()
-        .then(() => {
-          navigate("/");
-        })
-        .catch((error) => {
-          console.error("Failed to delete folder:", error);
-        });
+      );
+
+      if (confirmDelete) {
+        logger.info("Attempting to delete folder", { folderId });
+
+        dispatch(deleteFolder(folderId))
+          .unwrap()
+          .then(() => {
+            logger.info("Folder deleted successfully", { folderId });
+            navigate("/");
+          })
+          .catch((error) => {
+            logger.error("Failed to delete folder", error, { folderId });
+          });
+      } else {
+        logger.info("Folder deletion cancelled", { folderId });
+      }
+    } catch (error) {
+      logger.error("Unexpected error deleting folder", error, { folderId });
     }
   };
 
   const handleEditContent = (content) => {
-    setSelectedContent(content);
-    if (content.contentType === "TEXT") {
-      setIsTextFormOpen(true);
-    } else if (content.contentType === "LINK") {
-      setIsLinkFormOpen(true);
+    try {
+      logger.info("Preparing to edit content", {
+        contentId: content.id,
+        contentType: content.contentType,
+      });
+
+      setSelectedContent(content);
+
+      if (content.contentType === "TEXT") {
+        setIsTextFormOpen(true);
+      } else if (content.contentType === "LINK") {
+        setIsLinkFormOpen(true);
+      }
+    } catch (error) {
+      logger.error("Error preparing content edit", error, {
+        contentId: content.id,
+      });
     }
   };
 
+  // Render loading state
   if (folderLoading && !currentFolder) {
     return (
       <Layout>
@@ -84,7 +154,10 @@ const FolderPage = () => {
     );
   }
 
+  // Render not found state
   if (!currentFolder) {
+    logger.warn("Folder not found", { folderId });
+
     return (
       <Layout>
         <div className="text-center py-12">
@@ -96,7 +169,13 @@ const FolderPage = () => {
             permission to view it.
           </p>
           <div className="mt-6">
-            <Link to="/" className="text-primary-600 hover:text-primary-500">
+            <Link
+              to="/"
+              className="text-primary-600 hover:text-primary-500"
+              onClick={() =>
+                logger.info("Navigating to home from folder not found")
+              }
+            >
               Go back to home
             </Link>
           </div>
@@ -111,7 +190,10 @@ const FolderPage = () => {
         <Button
           variant="ghost"
           className="flex items-center text-gray-600"
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            logger.info("Navigating back from folder page");
+            navigate(-1);
+          }}
         >
           <FiArrowLeft className="mr-1" />
           Back
@@ -163,7 +245,12 @@ const FolderPage = () => {
               variant="ghost"
               size="sm"
               className="flex items-center text-primary-600"
-              onClick={() => setIsSubfolderModalOpen(true)}
+              onClick={() => {
+                logger.info("Opening subfolder creation modal", {
+                  parentFolderId: folderId,
+                });
+                setIsSubfolderModalOpen(true);
+              }}
             >
               <FiPlus className="mr-1" />
               Add Subfolder
@@ -176,6 +263,12 @@ const FolderPage = () => {
                 key={subfolder.id}
                 to={`/folder/${subfolder.id}`}
                 className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+                onClick={() =>
+                  logger.info("Navigating to subfolder", {
+                    subfolderId: subfolder.id,
+                    subfolderName: subfolder.name,
+                  })
+                }
               >
                 <FiFolder className="text-gray-400 mr-3" />
                 <span className="font-medium">{subfolder.name}</span>
@@ -190,21 +283,30 @@ const FolderPage = () => {
 
         <div className="flex gap-2">
           <Button
-            onClick={() => setIsTextFormOpen(true)}
+            onClick={() => {
+              logger.info("Opening text content creation", { folderId });
+              setIsTextFormOpen(true);
+            }}
             className="flex items-center"
             size="sm"
           >
             Add Text
           </Button>
           <Button
-            onClick={() => setIsLinkFormOpen(true)}
+            onClick={() => {
+              logger.info("Opening link content creation", { folderId });
+              setIsLinkFormOpen(true);
+            }}
             className="flex items-center"
             size="sm"
           >
             Add Link
           </Button>
           <Button
-            onClick={() => setIsFileUploadOpen(true)}
+            onClick={() => {
+              logger.info("Opening file upload", { folderId });
+              setIsFileUploadOpen(true);
+            }}
             className="flex items-center"
             size="sm"
           >
@@ -266,19 +368,31 @@ const FolderPage = () => {
 
       <FolderModal
         isOpen={isFolderModalOpen}
-        onClose={() => setIsFolderModalOpen(false)}
+        onClose={() => {
+          logger.info("Closing folder edit modal", { folderId });
+          setIsFolderModalOpen(false);
+        }}
         folder={currentFolder}
       />
 
       <FolderModal
         isOpen={isSubfolderModalOpen}
-        onClose={() => setIsSubfolderModalOpen(false)}
+        onClose={() => {
+          logger.info("Closing subfolder creation modal", {
+            parentFolderId: folderId,
+          });
+          setIsSubfolderModalOpen(false);
+        }}
         parentId={folderId}
       />
 
       <TextContentForm
         isOpen={isTextFormOpen}
         onClose={() => {
+          logger.info("Closing text content form", {
+            folderId,
+            editingContentId: selectedContent?.id,
+          });
           setIsTextFormOpen(false);
           setSelectedContent(null);
         }}
@@ -292,6 +406,10 @@ const FolderPage = () => {
       <LinkContentForm
         isOpen={isLinkFormOpen}
         onClose={() => {
+          logger.info("Closing link content form", {
+            folderId,
+            editingContentId: selectedContent?.id,
+          });
           setIsLinkFormOpen(false);
           setSelectedContent(null);
         }}
@@ -304,7 +422,10 @@ const FolderPage = () => {
 
       <FileUploadForm
         isOpen={isFileUploadOpen}
-        onClose={() => setIsFileUploadOpen(false)}
+        onClose={() => {
+          logger.info("Closing file upload form", { folderId });
+          setIsFileUploadOpen(false);
+        }}
       />
     </Layout>
   );

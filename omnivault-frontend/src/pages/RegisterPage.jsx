@@ -8,6 +8,7 @@ import {
   clearError,
   setVerificationEmail,
 } from "../store/slices/authSlice";
+import logger from "../services/loggerService";
 import AuthLayout from "../components/layout/AuthLayout";
 import Input from "../components/common/Input";
 import Button from "../components/common/Button";
@@ -32,18 +33,63 @@ const RegisterSchema = Yup.object().shape({
 const RegisterPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error } = useSelector((state) => state.auth);
+  const { error } = useSelector((state) => state.auth);
   const [showError, setShowError] = useState(false);
+
+  useEffect(() => {
+    // Log registration page access
+    logger.info("Registration page accessed");
+  }, []);
 
   useEffect(() => {
     if (error) {
       setShowError(true);
+
+      // Log registration error
+      logger.error("Registration attempt failed", error, {
+        errorType: "RegistrationError",
+      });
     }
   }, [error]);
 
   const handleCloseError = () => {
     setShowError(false);
     dispatch(clearError());
+
+    // Log error dismissal
+    logger.info("Registration error alert dismissed");
+  };
+
+  const handleSubmit = async (values, { setSubmitting }) => {
+    try {
+      // Log registration attempt
+      logger.info("Registration attempt initiated", {
+        username: values.username,
+        email: values.email,
+      });
+
+      // Use logAsyncError to handle potential registration failures
+      await logger.logAsyncError(
+        dispatch(register(values)).unwrap(),
+        "Registration failed",
+        { username: values.username, email: values.email }
+      );
+
+      // Log successful registration
+      logger.info("User registered successfully", {
+        username: values.username,
+        email: values.email,
+      });
+
+      // Store verification email
+      dispatch(setVerificationEmail(values.email));
+
+      // Navigate to verification page
+      navigate("/verify-email");
+    } catch (error) {
+      // Error is already logged by logAsyncError
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -70,21 +116,16 @@ const RegisterPage = () => {
           lastName: "",
         }}
         validationSchema={RegisterSchema}
-        onSubmit={(values) => {
-          dispatch(register(values))
-            .unwrap()
-            .then(() => {
-              // Store the email for verification process
-              dispatch(setVerificationEmail(values.email));
-              // Redirect to verification page
-              navigate("/verify-email");
-            })
-            .catch((error) => {
-              console.error("Registration failed:", error);
-            });
-        }}
+        onSubmit={handleSubmit}
       >
-        {({ values, errors, touched, handleChange, handleBlur }) => (
+        {({
+          values,
+          errors,
+          touched,
+          handleChange,
+          handleBlur,
+          isSubmitting,
+        }) => (
           <Form>
             <Input
               label="Username"
@@ -151,9 +192,9 @@ const RegisterPage = () => {
                 type="submit"
                 variant="primary"
                 fullWidth
-                disabled={loading}
+                disabled={isSubmitting}
               >
-                {loading ? <Spinner size="sm" className="mr-2" /> : null}
+                {isSubmitting ? <Spinner size="sm" className="mr-2" /> : null}
                 Create Account
               </Button>
             </div>
@@ -164,7 +205,11 @@ const RegisterPage = () => {
       <div className="mt-4 text-center">
         <p className="text-sm text-gray-600">
           Already have an account?{" "}
-          <Link to="/login" className="text-primary-600 hover:text-primary-500">
+          <Link
+            to="/login"
+            className="text-primary-600 hover:text-primary-500"
+            onClick={() => logger.info("Navigating to login page")}
+          >
             Sign in
           </Link>
         </p>

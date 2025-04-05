@@ -201,7 +201,7 @@ const ContentCard = ({ content, onEdit }) => {
           <div className="flex items-center w-full min-w-0">
             {getContentIcon()}
             <h3 className="ml-2 font-medium flex-grow overflow-hidden">
-              <span className="block truncate flex items-center">
+              <span className="block truncate  items-center">
                 {content.title}
                 {getStorageLocationIcon()}
               </span>
