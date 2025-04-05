@@ -8,6 +8,7 @@ import { uploadFile } from "../../../store/slices/contentSlice";
 import { getRootFolders } from "../../../store/slices/folderSlice";
 import { getAllTags } from "../../../store/slices/tagSlice";
 import logger from "../../../services/loggerService";
+import systemService from "../../../services/systemService";
 import Modal from "../../common/Modal";
 import Input from "../../common/Input";
 import TextArea from "../../common/TextArea";
@@ -59,11 +60,11 @@ const FileUploadForm = ({ isOpen, onClose }) => {
   // Cloud storage status check
   const checkCloudStorageStatus = async () => {
     try {
-      // This could be an API call to check status
-      // For now, we'll just simulate it
-      setIsCloudEnabled(true);
+      const cloudStatus = await systemService.getCloudStorageStatus();
+      logger.info("Cloud storage status checked", { isEnabled: cloudStatus });
+      setIsCloudEnabled(cloudStatus);
     } catch (error) {
-      console.error("Error checking cloud storage status:", error);
+      logger.warn("Could not check cloud storage status", error);
       setIsCloudEnabled(false);
     }
   };
