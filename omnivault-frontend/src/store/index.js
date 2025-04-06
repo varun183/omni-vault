@@ -14,7 +14,8 @@ const rootReducer = combineReducers({
 const appReducer = (state, action) => {
   if (action.type === logout.fulfilled.type) {
     return {
-      auth: state.auth, // Preserve auth state
+      ...state,
+      auth: authReducer(undefined, { type: "RESET" }),
       folders: folderReducer(undefined, { type: "RESET" }),
       content: contentReducer(undefined, { type: "RESET" }),
       tags: tagReducer(undefined, { type: "RESET" }),
