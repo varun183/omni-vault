@@ -96,7 +96,7 @@ public class ContentController {
             @RequestParam(required = false) UUID folderId,
             @RequestParam(required = false) List<UUID> tagIds,
             @RequestParam(required = false) List<String> newTags,
-            @RequestParam(required = false, defaultValue = "LOCAL") StorageLocation storageLocation) {
+            @RequestParam(required = false, defaultValue = "CLOUD") StorageLocation storageLocation) {
         return ResponseEntity.ok(contentService.createFileContent(
                 file, title, description, folderId, tagIds, newTags, storageLocation));
     }

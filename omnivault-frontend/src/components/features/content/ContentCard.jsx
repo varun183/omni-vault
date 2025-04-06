@@ -105,26 +105,14 @@ const ContentCard = ({ content, onEdit }) => {
   };
 
   const getStorageLocationIcon = () => {
-    if (content.storageLocation === "CLOUD") {
-      return (
-        <span
-          className="ml-1 text-blue-500 tooltip-wrapper"
-          title="Stored in cloud"
-        >
-          <FiCloud size={14} />
-        </span>
-      );
-    } else if (content.storageLocation === "LOCAL") {
-      return (
-        <span
-          className="ml-1 text-gray-500 tooltip-wrapper"
-          title="Stored locally"
-        >
-          <FiServer size={14} />
-        </span>
-      );
-    }
-    return null;
+    return (
+      <span
+        className="ml-1 text-blue-500 tooltip-wrapper"
+        title="Stored in cloud"
+      >
+        <FiCloud size={14} />
+      </span>
+    );
   };
 
   const getContentIcon = () => {

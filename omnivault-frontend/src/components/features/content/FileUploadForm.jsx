@@ -34,7 +34,7 @@ const FileUploadForm = ({ isOpen, onClose }) => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [newTagInput, setNewTagInput] = useState("");
   const [newTags, setNewTags] = useState([]);
-  const [storageLocation, setStorageLocation] = useState("LOCAL");
+  const [storageLocation, setStorageLocation] = useState("CLOUD");
   const [isCloudEnabled, setIsCloudEnabled] = useState(false);
 
   // Initial data loading
@@ -158,7 +158,7 @@ const FileUploadForm = ({ isOpen, onClose }) => {
     setSelectedFile(null);
     setSelectedTags([]);
     setNewTags([]);
-    setStorageLocation("LOCAL");
+    setStorageLocation("CLOUD");
     setNewTagInput("");
   };
 
@@ -227,51 +227,6 @@ const FileUploadForm = ({ isOpen, onClose }) => {
                 )}
               </div>
             </div>
-
-            {/* Storage Location Selection */}
-            {isCloudEnabled && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Storage Location
-                </label>
-                <div className="flex gap-4 mt-1">
-                  <button
-                    type="button"
-                    className={`flex items-center justify-center px-4 py-2 border rounded-md ${
-                      storageLocation === "LOCAL"
-                        ? "bg-gray-100 border-gray-300 text-gray-800"
-                        : "bg-white border-gray-300 text-gray-500"
-                    }`}
-                    onClick={() => {
-                      logger.info("Selected local storage", {
-                        previousLocation: storageLocation,
-                      });
-                      setStorageLocation("LOCAL");
-                    }}
-                  >
-                    <FiServer className="mr-2" />
-                    Local Storage
-                  </button>
-                  <button
-                    type="button"
-                    className={`flex items-center justify-center px-4 py-2 border rounded-md ${
-                      storageLocation === "CLOUD"
-                        ? "bg-blue-50 border-blue-300 text-blue-700"
-                        : "bg-white border-gray-300 text-gray-500"
-                    }`}
-                    onClick={() => {
-                      logger.info("Selected cloud storage", {
-                        previousLocation: storageLocation,
-                      });
-                      setStorageLocation("CLOUD");
-                    }}
-                  >
-                    <FiCloud className="mr-2" />
-                    Cloud Storage
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Title Input */}
             <Input

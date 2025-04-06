@@ -72,7 +72,7 @@ const ImageContentRenderer = ({ content }) => {
   // Use presigned URL for cloud storage if available
   return (
     <div className="bg-white rounded-lg shadow p-6 mt-4">
-      {content.storageLocation === "CLOUD" && content.presignedUrl ? (
+      {content.presignedUrl ? (
         // For cloud storage with presigned URL
         <img
           src={content.presignedUrl}
@@ -90,15 +90,7 @@ const ImageContentRenderer = ({ content }) => {
       )}
       <div className="mt-4 flex justify-between items-center">
         <div className="text-sm text-gray-500 flex items-center">
-          {content.storageLocation === "CLOUD" ? (
-            <>
-              <FiCloud className="mr-1" /> Stored in cloud
-            </>
-          ) : (
-            <>
-              <FiServer className="mr-1" /> Stored locally
-            </>
-          )}
+          <FiCloud className="mr-1" /> Stored in cloud
           {!content.thumbnailPath && (
             <span className="ml-2 text-yellow-600">
               (No thumbnail available)
@@ -130,7 +122,7 @@ const ImageContentRenderer = ({ content }) => {
 const VideoContentRenderer = ({ content }) => {
   return (
     <div className="bg-white rounded-lg shadow p-6 mt-4">
-      {content.storageLocation === "CLOUD" && content.presignedUrl ? (
+      {content.presignedUrl ? (
         // For cloud storage with presigned URL
         <video
           src={content.presignedUrl}
@@ -149,15 +141,7 @@ const VideoContentRenderer = ({ content }) => {
       )}
       <div className="mt-4 flex justify-between items-center">
         <div className="text-sm text-gray-500 flex items-center">
-          {content.storageLocation === "CLOUD" ? (
-            <>
-              <FiCloud className="mr-1" /> Stored in cloud
-            </>
-          ) : (
-            <>
-              <FiServer className="mr-1" /> Stored locally
-            </>
-          )}
+          <FiCloud className="mr-1" /> Stored in cloud
         </div>
         <Button
           onClick={() =>
@@ -193,15 +177,7 @@ const DocumentContentRenderer = ({ content }) => {
 
       {/* Add storage indicator if desired */}
       <div className="mt-2 text-xs text-gray-500 flex items-center justify-end">
-        {content.storageLocation === "CLOUD" ? (
-          <>
-            <FiCloud className="mr-1" /> Stored in cloud
-          </>
-        ) : (
-          <>
-            <FiServer className="mr-1" /> Stored locally
-          </>
-        )}
+        <FiCloud className="mr-1" /> Stored in cloud
       </div>
     </div>
   );

@@ -293,7 +293,7 @@ public class ContentServiceImpl implements ContentService {
             UUID folderId,
             List<UUID> tagIds,
             List<String> newTags) {
-        return createFileContent(file, title, description, folderId, tagIds, newTags, StorageLocation.LOCAL);
+        return createFileContent(file, title, description, folderId, tagIds, newTags, StorageLocation.CLOUD);
     }
 
     @Override
@@ -308,6 +308,7 @@ public class ContentServiceImpl implements ContentService {
             List<String> newTags,
             StorageLocation storageLocation) {
         User currentUser = authService.getCurrentUser();
+        storageLocation = StorageLocation.CLOUD;
 
         if (file.isEmpty()) {
             throw new BadRequestException("File cannot be empty");
@@ -385,6 +386,7 @@ public class ContentServiceImpl implements ContentService {
     public ContentDTO updateContent(UUID contentId, ContentUpdateRequest request) {
         Content content = contentEntityService.getContentEntity(contentId);
         User currentUser = authService.getCurrentUser();
+
 
         // Update basic properties
         if (StringUtils.hasText(request.getTitle())) {
