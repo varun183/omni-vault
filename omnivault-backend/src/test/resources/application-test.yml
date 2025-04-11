@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+    show-sql: true
+  flyway:
+    enabled: false
+
+# JWT Configuration for tests
+app:
+  jwt:
+    secret: TestSecretKeyForJwtTokenGenerationAndVerificationInTestEnvironment
+    accessTokenExpirationMs: 3600000
+    refreshTokenExpirationMs: 86400000
+  storage:
+    location: ./test-storage
+    max-size:
+      image: 10
+      video: 100
+      document: 50
+      other: 25
+  email:
+    from: test@example.com
+    verification:
+      baseUrl: http://localhost:8080/verify
+      tokenExpiry: 1440
+      otpExpiry: 10
+      otpLength: 6
+
+aws:
+  ses:
+    enabled: false
+  s3:
+    enabled: false
