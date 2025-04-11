@@ -121,11 +121,43 @@ aws:
      url-expiration-seconds: 3600
      max-size-bytes: 104857600
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs  # Endpoint for OpenAPI JSON
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html  # Swagger UI endpoint
+    enabled: true
+
+    # UI Customization Options
+    operationsSorter: method  # Sort operations by HTTP method
+    tagsSorter: alpha  # Sort tags alphabetically
+    docExpansion: none  # Collapse operations by default
+    filter: true  # Enable filtering of operations
+    displayRequestDuration: true  # Show request duration
+
+  # Packages to scan for OpenAPI documentation
+  packages-to-scan:
+    - com.omnivault.controller
+
+  # Default media types
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+
+  # Specific paths to document
+  paths-to-match:
+    - /auth/**
+    - /contents/**
+    - /folders/**
+    - /tags/**
+    - /system/**
+
+
 # Logging configuration
 logging:
   level:
     root: INFO
-    com.personal.omnivault: DEBUG
+    com.omnivault: DEBUG
     org.springframework.web: INFO
     org.springframework.security: INFO
     org.hibernate: INFO
