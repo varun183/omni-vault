@@ -1,4 +1,6 @@
+// src/services/axiosInstance.js
 import axios from "axios";
+import connectivityService from "./connectivityService";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
@@ -7,6 +9,7 @@ const axiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 30000, // 30 second timeout
 });
 
 // Request interceptor to include auth token
@@ -21,12 +24,31 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle token refresh
+// Response interceptor to handle token refresh and connectivity issues
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
+    // ===== CONNECTIVITY ERROR HANDLING =====
+    // If there's no response, it's likely a network issue or server down
+    if (!error.response) {
+      // Let the connectivity service know about this error and check server status
+      connectivityService.handleApiError(error);
+
+      // Add to retry queue if appropriate
+      if (originalRequest && originalRequest.method) {
+        const retryFn = () => axiosInstance(originalRequest);
+        connectivityService.addToRetryQueue(retryFn);
+      }
+
+      // Add a flag to the error so logger can identify it
+      error.isConnectivityError = true;
+      return Promise.reject(error);
+    }
+
+    // ===== TOKEN REFRESH HANDLING =====
+    // Handle token refresh for 401 errors
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
