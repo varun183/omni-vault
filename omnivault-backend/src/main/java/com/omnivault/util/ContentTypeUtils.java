@@ -2,16 +2,22 @@ package com.omnivault.util;
 
 import com.omnivault.domain.model.ContentType;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.tika.Tika;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
+import java.io.File;
+import java.io.IOException;
 
 /**
  * Utility class for content type detection and metadata management.
  * Centralizes document identification logic across the application.
  */
+@Slf4j
 @Component
 public class ContentTypeUtils {
 
@@ -38,6 +44,11 @@ public class ContentTypeUtils {
 
     // Common MIME types mapped to content types
     private static final Map<String, ContentType> MIME_TYPE_MAP = createMimeTypeMap();
+
+
+
+
+
 
     private static Map<String, ContentType> createMimeTypeMap() {
         Map<String, ContentType> map = new HashMap<>();
@@ -104,96 +115,9 @@ public class ContentTypeUtils {
     }
 
 
-    public static ContentType determineContentType(String filename) {
-        return determineContentType(filename, null);
-    }
 
 
-    public static boolean isViewableInBrowser(String mimeType) {
-        if (mimeType == null) return false;
-
-        // Types that browsers can typically render natively
-        return mimeType.equals("application/pdf") ||
-                mimeType.startsWith("image/") ||
-                mimeType.startsWith("text/") ||
-                mimeType.equals("application/json") ||
-                mimeType.equals("application/xml");
-    }
 
 
-    public static String getDocumentTypeLabel(String mimeType, String filename) {
-        // Check by MIME type first
-        if (mimeType != null) {
-            switch (mimeType) {
-                case "application/pdf":
-                    return "PDF Document";
-                case "application/msword":
-                case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-                    return "Word Document";
-                case "application/vnd.ms-excel":
-                case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                    return "Excel Spreadsheet";
-                case "application/vnd.ms-powerpoint":
-                case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-                    return "PowerPoint Presentation";
-                case "application/json":
-                    return "JSON Document";
-                case "application/xml":
-                    return "XML Document";
-                case "text/plain":
-                    return "Text Document";
-                case "text/csv":
-                    return "CSV Document";
-                case "text/markdown":
-                    return "Markdown Document";
-                case "text/html":
-                    return "HTML Document";
-                case "application/zip":
-                case "application/x-zip-compressed":
-                    return "ZIP Archive";
-                case "application/x-rar-compressed":
-                    return "RAR Archive";
-                case "application/x-7z-compressed":
-                    return "7Z Archive";
-                default:
-                    if (mimeType.startsWith("text/")) {
-                        return "Text Document";
-                    }
-                    break;
-            }
-        }
 
-        // Fall back to extension if MIME type didn't match
-        if (filename != null) {
-            String extension = FilenameUtils.getExtension(filename).toLowerCase();
-            switch (extension) {
-                case "pdf": return "PDF Document";
-                case "doc":
-                case "docx": return "Word Document";
-                case "xls":
-                case "xlsx": return "Excel Spreadsheet";
-                case "ppt":
-                case "pptx": return "PowerPoint Presentation";
-                case "txt": return "Text Document";
-                case "rtf": return "Rich Text Document";
-                case "json": return "JSON Document";
-                case "xml": return "XML Document";
-                case "md": return "Markdown Document";
-                case "csv": return "CSV Document";
-                case "html":
-                case "htm": return "HTML Document";
-                case "zip": return "ZIP Archive";
-                case "rar": return "RAR Archive";
-                case "7z": return "7Z Archive";
-            }
-        }
-
-        // Generic fallback
-        return "Document";
-    }
-
-
-    public static String getDocumentTypeLabel(String mimeType) {
-        return getDocumentTypeLabel(mimeType, null);
-    }
 }

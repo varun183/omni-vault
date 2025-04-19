@@ -63,21 +63,6 @@ const EmailVerificationPage = () => {
         await dispatch(verifyEmail(token)).unwrap();
 
         logger.info("Email verified successfully via token");
-
-        // Handle window closing for verification link
-        if (window.opener) {
-          try {
-            // Close the original window (verification page)
-            window.opener.location = "/login?verified=true";
-            window.close();
-          } catch (err) {
-            // Fallback if direct closing fails
-            logger.warn("Could not close opener window", err);
-            window.opener.focus();
-          }
-        }
-
-        // Fallback navigation if opener methods fail
         navigate("/login?verified=true");
       } catch (error) {
         logger.warn("Token verification failed, showing OTP form", {

@@ -23,8 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 
@@ -250,77 +248,9 @@ public class FileServiceImpl implements FileService {
     }
 
 
-    public String detectMimeType(MultipartFile file, String originalFilename) {
-        // First, try to use the MIME type provided by the client
-        String mimeType = file.getContentType();
 
-        // If no MIME type is provided it's the generic "application/octet-stream",
-        // try to detect it based on file extension
-        if (mimeType == null || mimeType.equals("application/octet-stream")) {
-            // Handle potential null originalFilename
-            if (originalFilename != null) {
-                String extension = FilenameUtils.getExtension(originalFilename).toLowerCase();
 
-                // Use a HashMap instead of Map.of() to avoid the limitation on number of entries
-                Map<String, String> mimeTypeMap = getMimeTypeMap();
 
-                if (mimeTypeMap.containsKey(extension)) {
-                    mimeType = mimeTypeMap.get(extension);
-                }
-            }
-        }
-
-        // If still not determined, try Apache Tika for more accurate detection
-        if (mimeType == null || mimeType.equals("application/octet-stream")) {
-            File tempFile = null;
-            try {
-                // Create a temporary file to use with Tika
-                String safeName = originalFilename != null ? originalFilename : "unknown";
-                tempFile = File.createTempFile("detect-mime-", "-" + FilenameUtils.getExtension(safeName));
-                file.transferTo(tempFile);
-
-                // Use Tika to detect the MIME type
-                mimeType = tika.detect(tempFile);
-
-                // Clean up (handle the boolean result)
-                if (!tempFile.delete()) {
-                    log.warn("Failed to delete temporary file: {}", tempFile.getAbsolutePath());
-                }
-            } catch (IOException e) {
-                log.warn("Failed to detect MIME type using Tika: {}", e.getMessage());
-                // Ensure cleanup in case of exception
-                if (tempFile != null && tempFile.exists() && !tempFile.delete()) {
-                    log.warn("Failed to delete temporary file after error: {}", tempFile.getAbsolutePath());
-                }
-            }
-        }
-
-        // Default to octet-stream if all detection methods fail
-        return mimeType != null ? mimeType : "application/octet-stream";
-    }
-
-    private static Map<String, String> getMimeTypeMap() {
-        Map<String, String> mimeTypeMap = new HashMap<>();
-
-        // Text files
-        mimeTypeMap.put("txt", "text/plain");
-        mimeTypeMap.put("log", "text/plain");
-        mimeTypeMap.put("csv", "text/csv");
-        mimeTypeMap.put("md", "text/markdown");
-        mimeTypeMap.put("json", "application/json");
-        mimeTypeMap.put("xml", "application/xml");
-        mimeTypeMap.put("html", "text/html");
-        mimeTypeMap.put("css", "text/css");
-        mimeTypeMap.put("js", "application/javascript");
-
-        // Document files
-        mimeTypeMap.put("pdf", "application/pdf");
-        mimeTypeMap.put("doc", "application/msword");
-        mimeTypeMap.put("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-        mimeTypeMap.put("xls", "application/vnd.ms-excel");
-        mimeTypeMap.put("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        return mimeTypeMap;
-    }
 
     // Helper methods
 
@@ -358,4 +288,5 @@ public class FileServiceImpl implements FileService {
             );
         }
     }
+
 }

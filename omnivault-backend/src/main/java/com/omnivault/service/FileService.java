@@ -77,12 +77,5 @@ public interface FileService {
      */
     String getContentType(String storagePath);
 
-    /**
-     * Detects the MIME type of  file using multiple methods
-     *
-     * @param file The uploaded file
-     * @param originalFilename The original filename
-     * @return The detected MIME type
-     */
-    String detectMimeType(MultipartFile file, String originalFilename);
+
 }

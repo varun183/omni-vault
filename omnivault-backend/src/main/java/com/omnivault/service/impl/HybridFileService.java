@@ -5,6 +5,7 @@ import com.omnivault.domain.model.StorageLocation;
 import com.omnivault.exception.FileStorageException;
 import com.omnivault.service.CloudStorageService;
 import com.omnivault.service.FileService;
+import com.omnivault.util.ContentTypeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
@@ -217,10 +218,7 @@ public class HybridFileService implements FileService {
         return localFileService.getContentType(storagePath);
     }
 
-    @Override
-    public String detectMimeType(MultipartFile file, String originalFilename) {
-        return localFileService.detectMimeType(file, originalFilename);
-    }
+
 
 
     public String generatePresignedUrl(String storagePath, StorageLocation storageLocation) {

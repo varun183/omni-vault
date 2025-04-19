@@ -74,6 +74,7 @@ const LoginPage = () => {
 
       // Navigate to home page after successful login
       navigate("/");
+      // eslint-disable-next-line no-unused-vars
     } catch (error) {
       // Error is already logged by logAsyncError
       setSubmitting(false);

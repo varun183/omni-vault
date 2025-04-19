@@ -247,11 +247,5 @@ public interface ContentService {
      */
     ContentDTO moveContentStorage(UUID contentId, StorageLocation targetStorageLocation);
 
-    /**
-     * Generate pre-signed URLs in batch for multiple content items
-     *
-     * @param contents List of content items
-     * @return Map of content IDs to presigned URLs
-     */
-    Map<UUID, String> generateBatchPresignedUrls(List<Content> contents);
+
 }

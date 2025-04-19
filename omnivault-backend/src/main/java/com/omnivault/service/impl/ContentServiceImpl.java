@@ -665,21 +665,7 @@ public class ContentServiceImpl implements ContentService {
         return convertToContentDto(savedContent);
     }
 
-    @Override
-    public Map<UUID, String> generateBatchPresignedUrls(List<Content> contents) {
-        Map<UUID, String> presignedUrls = new HashMap<>();
 
-        contents.stream()
-                .filter(content -> content.getStorageLocation() == StorageLocation.CLOUD)
-                .forEach(content -> {
-                    String presignedUrl = fileService.generatePresignedUrl(
-                            content.getStoragePath(),
-                            StorageLocation.CLOUD);
-                    presignedUrls.put(content.getId(), presignedUrl);
-                });
-
-        return presignedUrls;
-    }
 
     private ContentDTO convertToContentDto(Content content) {
         ContentDTO.ContentDTOBuilder builder = ContentDTO.builder()
