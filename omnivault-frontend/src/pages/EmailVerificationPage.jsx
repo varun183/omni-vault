@@ -19,14 +19,31 @@ const EmailVerificationPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const { loading, error, verificationSuccess, verificationEmail } =
-    useSelector((state) => state.auth);
+  // Retrieve verification email from multiple sources
+  const getVerificationEmail = () => {
+    const stateEmail = localStorage.getItem("verification_email");
+    const email = stateEmail || searchParams.get("email");
+    return email;
+  };
+
+  const [verificationEmail] = useState(getVerificationEmail());
+  const { loading, error, verificationSuccess } = useSelector(
+    (state) => state.auth
+  );
 
   const [otpCode, setOtpCode] = useState("");
-  const [showOtpForm, setShowOtpForm] = useState(false);
+  const [showOtpForm, setShowOtpForm] = useState(true);
   const [resendDisabled, setResendDisabled] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
   const [verificationMessage, setVerificationMessage] = useState("");
+
+  // Redirect if no verification email is available
+  useEffect(() => {
+    if (!verificationEmail) {
+      logger.warn("No verification email found, redirecting to register");
+      navigate("/register");
+    }
+  }, [verificationEmail, navigate]);
 
   // Clean up verification state on component unmount
   useEffect(() => {
@@ -34,14 +51,6 @@ const EmailVerificationPage = () => {
       dispatch(clearVerificationState());
     };
   }, [dispatch]);
-
-  // Log page access and initial state
-  useEffect(() => {
-    logger.info("Email verification page accessed", {
-      hasTokenInUrl: !!searchParams.get("token"),
-      verificationEmail: verificationEmail || "No email in state",
-    });
-  }, [searchParams, verificationEmail]);
 
   // Token verification callback
   const verifyWithToken = useCallback(
@@ -51,13 +60,25 @@ const EmailVerificationPage = () => {
           tokenLength: token.length,
         });
 
-        await logger.logAsyncError(
-          dispatch(verifyEmail(token)).unwrap(),
-          "Email verification with token failed",
-          { tokenLength: token.length }
-        );
+        await dispatch(verifyEmail(token)).unwrap();
 
         logger.info("Email verified successfully via token");
+
+        // Handle window closing for verification link
+        if (window.opener) {
+          try {
+            // Close the original window (verification page)
+            window.opener.location = "/login?verified=true";
+            window.close();
+          } catch (err) {
+            // Fallback if direct closing fails
+            logger.warn("Could not close opener window", err);
+            window.opener.focus();
+          }
+        }
+
+        // Fallback navigation if opener methods fail
+        navigate("/login?verified=true");
       } catch (error) {
         logger.warn("Token verification failed, showing OTP form", {
           error: error.message,
@@ -65,7 +86,7 @@ const EmailVerificationPage = () => {
         setShowOtpForm(true);
       }
     },
-    [dispatch]
+    [dispatch, navigate]
   );
 
   // Check for token in URL on component mount
@@ -73,9 +94,6 @@ const EmailVerificationPage = () => {
     const token = searchParams.get("token");
     if (token) {
       verifyWithToken(token);
-    } else {
-      // No token, show OTP form
-      setShowOtpForm(true);
     }
   }, [searchParams, verifyWithToken]);
 
@@ -111,7 +129,7 @@ const EmailVerificationPage = () => {
       });
 
       setVerificationMessage(
-        "Session expired. Please try the link in your email."
+        "Session expired. Please go back to registration."
       );
       return;
     }
@@ -121,24 +139,25 @@ const EmailVerificationPage = () => {
         emailLength: verificationEmail.length,
       });
 
-      await logger.logAsyncError(
-        dispatch(
-          verifyEmailWithOTP({
-            email: verificationEmail,
-            otpCode,
-          })
-        ).unwrap(),
-        "OTP verification failed",
-        {
-          emailLength: verificationEmail.length,
-          otpCodeLength: otpCode.length,
-        }
-      );
+      // Dispatch OTP verification
+      await dispatch(
+        verifyEmailWithOTP({
+          email: verificationEmail,
+          otpCode,
+        })
+      ).unwrap();
+
+      // Clear local storage and navigate to login
+      localStorage.removeItem("verification_email");
+      navigate("/login?verified=true");
 
       logger.info("Email verified successfully via OTP");
     } catch (error) {
-      // Error is already logged by logAsyncError
-      setVerificationMessage("Invalid verification code. Please try again.");
+      // Log and display error
+      logger.error("OTP verification failed", error);
+      setVerificationMessage(
+        error.message || "Invalid verification code. Please try again."
+      );
     }
   };
 
@@ -163,20 +182,27 @@ const EmailVerificationPage = () => {
       setResendDisabled(true);
       setResendCountdown(60);
 
-      await logger.logAsyncError(
-        dispatch(resendVerificationEmail(verificationEmail)).unwrap(),
-        "Failed to resend verification email",
-        { emailLength: verificationEmail.length }
-      );
+      // Dispatch resend verification email
+      await dispatch(resendVerificationEmail(verificationEmail)).unwrap();
 
       logger.info("Verification email resent successfully");
       setVerificationMessage("Verification email resent!");
     } catch (error) {
-      // Error is already logged by logAsyncError
+      // Log and display error
+      logger.error("Failed to resend verification email", error);
+      setVerificationMessage(
+        error.message ||
+          "Failed to resend verification email. Please try again."
+      );
       setResendDisabled(false);
       setResendCountdown(0);
     }
   };
+
+  // If no email found, don't render the page
+  if (!verificationEmail) {
+    return null;
+  }
 
   return (
     <AuthLayout>
@@ -210,8 +236,9 @@ const EmailVerificationPage = () => {
 
       <div className="text-center mb-6">
         <p className="text-gray-600 mb-4">
-          We've sent a verification link and code to your email. Please check
-          your inbox and spam folder.
+          We've sent a verification link and code to{" "}
+          <span className="font-semibold">{verificationEmail}</span>. Please
+          check your inbox and spam folder.
         </p>
 
         {showOtpForm && (
@@ -229,6 +256,7 @@ const EmailVerificationPage = () => {
               }}
               placeholder="Enter 6-digit code"
               required
+              maxLength={6}
             />
 
             <div className="mt-4">
@@ -236,7 +264,7 @@ const EmailVerificationPage = () => {
                 type="submit"
                 variant="primary"
                 fullWidth
-                disabled={loading || !otpCode}
+                disabled={loading || !otpCode || otpCode.length !== 6}
                 onClick={() => logger.info("OTP verification initiated")}
               >
                 {loading ? <Spinner size="sm" className="mr-2" /> : null}
@@ -257,6 +285,19 @@ const EmailVerificationPage = () => {
               ? `Resend Email (${resendCountdown}s)`
               : "Resend Verification Email"}
           </Button>
+        </div>
+
+        <div className="mt-4 text-sm text-gray-600">
+          <p>
+            Didn't receive the email?{" "}
+            <button
+              type="button"
+              className="text-primary-600 hover:underline"
+              onClick={() => navigate("/register")}
+            >
+              Go back to registration
+            </button>
+          </p>
         </div>
       </div>
     </AuthLayout>

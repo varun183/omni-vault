@@ -130,18 +130,23 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
 
-        VerificationToken verificationToken = verificationTokenRepository.findByUserAndOtpCodeIsNotNull(user)
+        // Find a valid verification token for this user
+        VerificationToken verificationToken = verificationTokenRepository
+                .findByUserAndOtpCodeIsNotNull(user)
                 .orElseThrow(() -> new ResourceNotFoundException("Verification Token", "user", user.getId()));
 
+        // Validate OTP
         if (!verificationToken.getOtpCode().equals(otpCode)) {
             throw new BadRequestException("Invalid OTP code");
         }
 
+        // Check token expiry
         if (verificationToken.isExpired()) {
             verificationTokenRepository.delete(verificationToken);
             throw new BadRequestException("OTP code has expired");
         }
 
+        // Mark user as verified
         user.setEmailVerified(true);
         user.setEnabled(true);
         userRepository.save(user);

@@ -32,12 +32,14 @@ export const login = createAsyncThunk(
 
 export const register = createAsyncThunk(
   "auth/register",
-  async (userData, { rejectWithValue }) => {
+  async (userData, { rejectWithValue, dispatch }) => {
     try {
       apiCache.clear();
       const data = await authService.register(userData);
-      localStorage.setItem("access_token", data.accessToken);
-      localStorage.setItem("refresh_token", data.refreshToken);
+
+      // Store verification email explicitly
+      dispatch(setVerificationEmail(userData.email));
+
       return data;
     } catch (error) {
       return handleAsyncError(error, rejectWithValue, "Registration failed", {
@@ -89,9 +91,14 @@ export const verifyEmail = createAsyncThunk(
 
 export const verifyEmailWithOTP = createAsyncThunk(
   "auth/verifyEmailWithOTP",
-  async ({ email, otpCode }, { rejectWithValue }) => {
+  async ({ email, otpCode }, { rejectWithValue, dispatch }) => {
     try {
-      return await authService.verifyEmailWithOTP(email, otpCode);
+      const result = await authService.verifyEmailWithOTP(email, otpCode);
+
+      // Clear verification state after successful verification
+      dispatch(clearVerificationState());
+
+      return result;
     } catch (error) {
       return handleAsyncError(
         error,
@@ -119,33 +126,52 @@ export const resendVerificationEmail = createAsyncThunk(
   }
 );
 
+// Initial state with robust handling of authentication state
 const initialState = {
   user: null,
   isAuthenticated: !!localStorage.getItem("access_token"),
   loading: false,
   error: null,
   verificationSuccess: false,
-  verificationEmail: null,
+  // Prioritize Redux state, then localStorage, then null
+  verificationEmail: localStorage.getItem("verification_email") || null,
 };
 
+// Create the auth slice
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
+    // Clear any existing error state
     clearError: (state) => {
       state.error = null;
     },
+
+    // Set verification email with localStorage persistence
     setVerificationEmail: (state, action) => {
-      state.verificationEmail = action.payload;
+      const email = action.payload;
+      state.verificationEmail = email;
+
+      // Persist in localStorage for page refresh resilience
+      if (email) {
+        localStorage.setItem("verification_email", email);
+      } else {
+        localStorage.removeItem("verification_email");
+      }
     },
+
+    // Reset verification-related state
     clearVerificationState: (state) => {
       state.verificationSuccess = false;
       state.verificationEmail = null;
+      localStorage.removeItem("verification_email");
     },
   },
+
+  // Handle async action states
   extraReducers: (builder) => {
     builder
-      // Login
+      // Login handling
       .addCase(login.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -154,13 +180,16 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload.user;
+        // Clear any leftover verification state
+        state.verificationEmail = null;
+        localStorage.removeItem("verification_email");
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
-      // Register
+      // Registration handling
       .addCase(register.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -168,21 +197,23 @@ const authSlice = createSlice({
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user;
-        state.verificationEmail = action.payload.user.email;
-        // Note: not authenticating as the user is not verified yet
+        // Not authenticating as user is not verified yet
+        state.isAuthenticated = false;
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
-      // Logout
+      // Logout handling
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
         state.isAuthenticated = false;
+        state.verificationEmail = null;
+        localStorage.removeItem("verification_email");
       })
 
-      // Get Current User
+      // Get Current User handling
       .addCase(getCurrentUser.pending, (state) => {
         state.loading = true;
       })
@@ -197,7 +228,7 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
       })
 
-      // Verify Email Token
+      // Email Verification Token handling
       .addCase(verifyEmail.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -205,13 +236,15 @@ const authSlice = createSlice({
       .addCase(verifyEmail.fulfilled, (state) => {
         state.loading = false;
         state.verificationSuccess = true;
+        state.verificationEmail = null;
+        localStorage.removeItem("verification_email");
       })
       .addCase(verifyEmail.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
-      // Verify Email with OTP
+      // OTP Verification handling
       .addCase(verifyEmailWithOTP.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -219,13 +252,15 @@ const authSlice = createSlice({
       .addCase(verifyEmailWithOTP.fulfilled, (state) => {
         state.loading = false;
         state.verificationSuccess = true;
+        state.verificationEmail = null;
+        localStorage.removeItem("verification_email");
       })
       .addCase(verifyEmailWithOTP.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
-      // Resend Verification Email
+      // Resend Verification Email handling
       .addCase(resendVerificationEmail.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -240,6 +275,8 @@ const authSlice = createSlice({
   },
 });
 
+// Export actions and reducer
 export const { clearError, setVerificationEmail, clearVerificationState } =
   authSlice.actions;
+
 export default authSlice.reducer;
