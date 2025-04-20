@@ -21,6 +21,7 @@ import RecentPage from "./pages/RecentPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import TagsPage from "./pages/TagsPage";
 import EmailVerificationPage from "./pages/EmailVerificationPage";
+import SettingsPage from "./pages/SettingsPage";
 
 import "./connectivity.css";
 
@@ -79,6 +80,12 @@ const App = () => {
         <Route path="/favorites" element={<FavoritesPage />} />
         <Route path="/recent" element={<RecentPage />} />
         <Route path="/verify-email" element={<EmailVerificationPage />} />
+        <Route
+          path="/settings"
+          element={
+            isAuthenticated ? <SettingsPage /> : <Navigate to="/login" />
+          }
+        />
 
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

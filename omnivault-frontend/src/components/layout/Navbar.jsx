@@ -1,7 +1,14 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { FiMenu, FiX, FiUser, FiLogOut, FiSearch } from "react-icons/fi";
+import {
+  FiMenu,
+  FiX,
+  FiUser,
+  FiLogOut,
+  FiSearch,
+  FiSettings,
+} from "react-icons/fi";
 import { logout } from "../../store/slices/authSlice";
 import { searchContent } from "../../store/slices/contentSlice";
 import { apiCache } from "../../utils/apiCache";
@@ -80,6 +87,13 @@ const Navbar = () => {
                 {isMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
                     <div className="py-1">
+                      <Link
+                        to="/settings"
+                        className=" px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <FiSettings className="mr-2" /> Settings
+                      </Link>
                       <button
                         onClick={handleLogout}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"

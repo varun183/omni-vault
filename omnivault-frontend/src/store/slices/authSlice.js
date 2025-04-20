@@ -126,6 +126,64 @@ export const resendVerificationEmail = createAsyncThunk(
   }
 );
 
+export const updateProfile = createAsyncThunk(
+  "auth/updateProfile",
+  async (userData, { rejectWithValue }) => {
+    try {
+      const response = await authService.updateProfile(userData);
+      return {
+        user: response,
+        successMessage: "Profile updated successfully",
+      };
+    } catch (error) {
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to update profile",
+        { userData }
+      );
+    }
+  }
+);
+
+export const changePassword = createAsyncThunk(
+  "auth/changePassword",
+  async ({ currentPassword, newPassword }, { rejectWithValue }) => {
+    try {
+      await authService.changePassword(currentPassword, newPassword);
+      return {
+        successMessage: "Password changed successfully",
+      };
+    } catch (error) {
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to change password",
+        { userIdentifier: true }
+      );
+    }
+  }
+);
+
+export const deleteAccount = createAsyncThunk(
+  "auth/deleteAccount",
+  async ({ password }, { rejectWithValue, dispatch }) => {
+    try {
+      await authService.deleteAccount(password);
+      // Dispatch logout after successful account deletion
+      dispatch(logout());
+      return null;
+    } catch (error) {
+      return handleAsyncError(
+        error,
+        rejectWithValue,
+        "Failed to delete account",
+        { userIdentifier: true }
+      );
+    }
+  }
+);
+
 // Initial state with robust handling of authentication state
 const initialState = {
   user: null,
@@ -269,6 +327,50 @@ const authSlice = createSlice({
         state.loading = false;
       })
       .addCase(resendVerificationEmail.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(updateProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        // Update user details in state
+        state.user = {
+          ...state.user,
+          firstName: action.payload.user.firstName,
+          lastName: action.payload.user.lastName,
+        };
+        // Optional: You might want to clear any previous error
+        state.error = null;
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(changePassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(changePassword.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(changePassword.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(deleteAccount.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteAccount.fulfilled, (state) => {
+        state.loading = false;
+        state.user = null;
+        state.isAuthenticated = false;
+      })
+      .addCase(deleteAccount.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });
