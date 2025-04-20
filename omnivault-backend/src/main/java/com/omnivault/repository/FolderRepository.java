@@ -86,4 +86,11 @@ public interface FolderRepository extends JpaRepository<Folder, UUID> {
      */
     @Query("SELECT COUNT(f) FROM Folder f WHERE f.parent.id = ?1")
     int countSubfoldersByFolderId(UUID folderId);
+
+    /**
+     * Deletes all folders associated with a specific user.
+     *
+     * @param user The user whose folders are to be deleted
+     */
+    void deleteByUser(User user);
 }

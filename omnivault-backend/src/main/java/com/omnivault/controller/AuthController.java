@@ -1,9 +1,7 @@
 package com.omnivault.controller;
 
 import com.omnivault.config.RateLimiter;
-import com.omnivault.domain.dto.request.LoginRequest;
-import com.omnivault.domain.dto.request.RegisterRequest;
-import com.omnivault.domain.dto.request.TokenRefreshRequest;
+import com.omnivault.domain.dto.request.*;
 import com.omnivault.domain.dto.response.AuthResponse;
 import com.omnivault.domain.dto.response.UserDTO;
 import com.omnivault.exception.BadRequestException;
@@ -167,5 +165,59 @@ public class AuthController {
 
         boolean sent = authService.resendVerificationEmail(email);
         return ResponseEntity.ok(Map.of("sent", sent));
+    }
+
+    @Operation(
+            summary = "Update user profile",
+            description = "Allows authenticated user to update their profile information"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Profile updated successfully",
+                    content = @Content(schema = @Schema(implementation = UserDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid input",
+                    content = @Content),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content)
+    })
+    @PutMapping("/profile")
+    public ResponseEntity<UserDTO> updateProfile(
+            @Valid @RequestBody ProfileUpdateRequest request) {
+        return ResponseEntity.ok(authService.updateProfile(request));
+    }
+
+    @Operation(
+            summary = "Change user password",
+            description = "Allows authenticated user to change their password"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password changed successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid current password",
+                    content = @Content),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content)
+    })
+    @PutMapping("/change-password")
+    public ResponseEntity<Void> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(
+            summary = "Delete user account",
+            description = "Allows authenticated user to permanently delete their account"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Account deleted successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid password",
+                    content = @Content),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content)
+    })
+    @PostMapping("/delete-account")
+    public ResponseEntity<Void> deleteAccount(
+            @Valid @RequestBody DeleteAccountRequest request) {
+        authService.deleteAccount(request);
+        return ResponseEntity.ok().build();
     }
 }

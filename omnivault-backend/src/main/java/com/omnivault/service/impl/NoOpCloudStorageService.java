@@ -9,6 +9,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 
@@ -45,5 +46,10 @@ public class NoOpCloudStorageService implements CloudStorageService {
     @Override
     public boolean fileExists(String key) {
         return false;
+    }
+
+    @Override
+    public void deleteFiles(List<String> keys) {
+        throw new FileStorageException("Cloud storage is not enabled");
     }
 }

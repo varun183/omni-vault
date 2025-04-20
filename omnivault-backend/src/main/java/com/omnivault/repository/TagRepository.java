@@ -99,4 +99,11 @@ public interface TagRepository extends JpaRepository<Tag, UUID> {
      */
     @Query("SELECT t FROM Tag t LEFT JOIN FETCH t.user WHERE t.id = :id")
     Optional<Tag> findByIdWithUser(UUID id);
+
+    /**
+     * Deletes all tags associated with a specific user.
+     *
+     * @param user The user whose tags are to be deleted
+     */
+    void deleteByUser(User user);
 }

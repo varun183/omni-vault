@@ -1,23 +1,18 @@
 package com.omnivault.service.impl;
 
 import com.omnivault.config.JwtProperties;
-import com.omnivault.domain.dto.request.LoginRequest;
-import com.omnivault.domain.dto.request.RegisterRequest;
-import com.omnivault.domain.dto.request.TokenRefreshRequest;
+import com.omnivault.domain.dto.request.*;
 import com.omnivault.domain.dto.response.AuthResponse;
 import com.omnivault.domain.dto.response.UserDTO;
-import com.omnivault.domain.model.RefreshToken;
-import com.omnivault.domain.model.User;
-import com.omnivault.domain.model.VerificationToken;
+import com.omnivault.domain.model.*;
 import com.omnivault.exception.AuthenticationException;
 import com.omnivault.exception.BadRequestException;
 import com.omnivault.exception.ResourceNotFoundException;
-import com.omnivault.repository.RefreshTokenRepository;
-import com.omnivault.repository.UserRepository;
-import com.omnivault.repository.VerificationTokenRepository;
+import com.omnivault.repository.*;
 import com.omnivault.security.TokenProvider;
 import com.omnivault.security.UserPrincipal;
 import com.omnivault.service.AuthService;
+import com.omnivault.service.CloudStorageService;
 import com.omnivault.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
@@ -42,11 +39,15 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final ContentRepository contentRepository;
+    private final TagRepository tagRepository;
+    private final FolderRepository folderRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
     private final JwtProperties jwtProperties;
     private final EmailService emailService;
     private final VerificationTokenRepository verificationTokenRepository;
+    private final CloudStorageService cloudStorageService;
 
     @Override
     @Transactional
@@ -262,6 +263,114 @@ public class AuthServiceImpl implements AuthService {
     public UserDTO getCurrentUserDTO() {
         User user = getCurrentUser();
         return convertToUserDto(user);
+    }
+
+
+    @Override
+    @Transactional
+    public UserDTO updateProfile(ProfileUpdateRequest request) {
+        User currentUser = getCurrentUser();
+
+        // Update only provided fields
+        boolean updated = false;
+        if (request.getFirstName() != null &&
+                !request.getFirstName().equals(currentUser.getFirstName())) {
+            currentUser.setFirstName(request.getFirstName());
+            updated = true;
+        }
+        if (request.getLastName() != null &&
+                !request.getLastName().equals(currentUser.getLastName())) {
+            currentUser.setLastName(request.getLastName());
+            updated = true;
+        }
+
+        if (!updated) {
+            throw new BadRequestException("No changes detected in profile");
+        }
+
+        User updatedUser = userRepository.save(currentUser);
+        log.info("Profile updated for user: {}", updatedUser.getUsername());
+
+        return convertToUserDto(updatedUser);
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(ChangePasswordRequest request) {
+        User currentUser = getCurrentUser();
+
+        // Verify current password
+        if (!passwordEncoder.matches(request.getCurrentPassword(), currentUser.getPassword())) {
+            throw new BadRequestException("Current password is incorrect");
+        }
+
+        // Ensure new password is different from current password
+        if (passwordEncoder.matches(request.getNewPassword(), currentUser.getPassword())) {
+            throw new BadRequestException("New password must be different from current password");
+        }
+
+        // Encode and save new password
+        currentUser.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(currentUser);
+
+        // Invalidate all existing refresh tokens
+        refreshTokenRepository.deleteByUser(currentUser);
+
+        log.info("Password changed for user: {}", currentUser.getUsername());
+    }
+
+    @Transactional
+    public void deleteAccount(DeleteAccountRequest request) {
+        User currentUser = getCurrentUser();
+
+        // Verify password
+        if (!passwordEncoder.matches(request.getPassword(), currentUser.getPassword())) {
+            throw new BadRequestException("Invalid password");
+        }
+
+        try {
+            // Find and collect S3 file keys
+            List<String> s3FilesToDelete = new ArrayList<>();
+            List<Content> s3Contents = contentRepository.findByUserAndStorageLocation(
+                    currentUser,
+                    StorageLocation.CLOUD
+            );
+
+            // Log total cloud contents for deletion
+            log.info("Total cloud contents for deletion: {}", s3Contents.size());
+
+            // Collect keys for batch deletion with detailed logging
+            for (Content content : s3Contents) {
+                log.info("Content Details for Deletion:");
+                log.info("Content ID: {}", content.getId());
+                log.info("Storage Path: {}", content.getStoragePath());
+                log.info("Thumbnail Path: {}", content.getThumbnailPath());
+
+                if (content.getStoragePath() != null)
+                    s3FilesToDelete.add(content.getStoragePath());
+                if (content.getThumbnailPath() != null)
+                    s3FilesToDelete.add(content.getThumbnailPath());
+            }
+
+            // Batch delete S3 files
+            if (!s3FilesToDelete.isEmpty()) {
+                cloudStorageService.deleteFiles(s3FilesToDelete);
+            }
+
+            // Delete database records
+            contentRepository.deleteByUser(currentUser);
+            folderRepository.deleteByUser(currentUser);
+            tagRepository.deleteByUser(currentUser);
+            verificationTokenRepository.deleteAllByUser(currentUser);
+            refreshTokenRepository.deleteByUser(currentUser);
+            userRepository.delete(currentUser);
+
+            log.info("Account deleted for user: {}, S3 files deleted: {}",
+                    currentUser.getUsername(), s3FilesToDelete.size());
+        } catch (Exception e) {
+            log.error("Error deleting account for user: {}", currentUser.getUsername(), e);
+            throw new BadRequestException("Failed to delete account. Please contact support.");
+        }
     }
 
     private RefreshToken createRefreshToken(User user) {

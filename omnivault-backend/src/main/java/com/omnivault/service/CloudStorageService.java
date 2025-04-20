@@ -4,6 +4,7 @@ import com.omnivault.domain.model.ContentType;
 import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 /**
  * Service interface for cloud storage operations.
@@ -55,4 +56,11 @@ public interface CloudStorageService {
      * @return true if the file exists, false otherwise
      */
     boolean fileExists(String key);
+
+    /**
+     * Deletes multiple files from cloud storage
+     *
+     * @param keys List of unique identifiers of files in cloud storage
+     */
+    void deleteFiles(List<String> keys);
 }

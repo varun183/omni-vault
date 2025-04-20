@@ -1,8 +1,6 @@
 package com.omnivault.service;
 
-import com.omnivault.domain.dto.request.LoginRequest;
-import com.omnivault.domain.dto.request.RegisterRequest;
-import com.omnivault.domain.dto.request.TokenRefreshRequest;
+import com.omnivault.domain.dto.request.*;
 import com.omnivault.domain.dto.response.AuthResponse;
 import com.omnivault.domain.dto.response.UserDTO;
 import com.omnivault.domain.model.User;
@@ -81,4 +79,12 @@ public interface AuthService {
      * @return True if email sent successfully
      */
     boolean resendVerificationEmail(String email);
+
+     UserDTO updateProfile(ProfileUpdateRequest request);
+
+    void changePassword(ChangePasswordRequest request);
+
+    public void deleteAccount(DeleteAccountRequest request);
+
+
 }

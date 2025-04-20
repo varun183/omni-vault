@@ -1,9 +1,6 @@
 package com.omnivault.repository;
 
-import com.omnivault.domain.model.Content;
-import com.omnivault.domain.model.ContentType;
-import com.omnivault.domain.model.Folder;
-import com.omnivault.domain.model.User;
+import com.omnivault.domain.model.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -130,4 +127,20 @@ public interface ContentRepository extends JpaRepository<Content, UUID> {
      * @return A list of the top 5 most viewed content items
      */
     List<Content> findTop5ByUserOrderByViewCountDesc(User user);
+
+    /**
+     * Deletes all content items associated with a specific user.
+     *
+     * @param user The user whose contents are to be deleted
+     */
+    void deleteByUser(User user);
+
+    /**
+     * Finds all contents for a user stored in a specific storage location
+     *
+     * @param user The user whose contents are being retrieved
+     * @param storageLocation The storage location to filter by
+     * @return List of contents matching the criteria
+     */
+    List<Content> findByUserAndStorageLocation(User user, StorageLocation storageLocation);
 }

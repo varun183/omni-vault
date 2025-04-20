@@ -10,8 +10,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
@@ -22,6 +24,8 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 import java.io.IOException;
 import java.net.URL;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -124,18 +128,62 @@ public class S3StorageService implements CloudStorageService {
     @Override
     public void deleteFile(String key) {
         try {
-            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
-                    .bucket(s3Config.getBucketName())
-                    .key(key)
-                    .build();
+            // Add retry mechanism
+            int maxRetries = 3;
+            for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                            .bucket(s3Config.getBucketName())
+                            .key(key)
+                            .build();
 
-            s3Client.deleteObject(deleteObjectRequest);
-            log.info("Deleted file from S3: {}", key);
-        } catch (S3Exception ex) {
-            log.error("S3 error during file deletion", ex);
-            throw new FileStorageException("S3 error: " + ex.getMessage(), ex);
+                    s3Client.deleteObject(deleteObjectRequest);
+                    log.info("Deleted file from S3: {}", key);
+                    return; // Success, exit method
+                } catch (S3Exception | SdkClientException e) {
+                    if (attempt == maxRetries) {
+                        log.error("Failed to delete S3 file after {} attempts: {}", maxRetries, key, e);
+                        throw new FileStorageException("S3 deletion failed: " + e.getMessage(), e);
+                    }
+
+                    // Wait before retrying (exponential backoff)
+                    try {
+                        Thread.sleep((long) Math.pow(2, attempt) * 1000);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        log.warn("Thread interrupted during S3 file deletion retry");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Unexpected error during S3 file deletion", e);
+            // Optionally, you might want to throw a custom exception
+            throw new FileStorageException("Unexpected error during S3 file deletion: " + e.getMessage(), e);
         }
     }
+
+    @Override
+    public void deleteFiles(List<String> keys) {
+        if (CollectionUtils.isEmpty(keys)) {
+            return;
+        }
+
+        List<String> failedDeletions = new ArrayList<>();
+
+        for (String key : keys) {
+            try {
+                deleteFile(key);
+            } catch (Exception e) {
+                log.error("Failed to delete S3 file: {}", key, e);
+                failedDeletions.add(key);
+            }
+        }
+
+        if (!failedDeletions.isEmpty()) {
+            log.warn("Some files could not be deleted from S3: {}", failedDeletions);
+        }
+    }
+
 
     @Override
     public boolean fileExists(String key) {
